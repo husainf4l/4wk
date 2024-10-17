@@ -1,0 +1,129 @@
+:root {
+    --primary-color: #1e272e;
+    --secondary-color: #ff6b6b;
+    --text-color: #ffffff;
+    --bg-gradient: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+    --shadow-color: rgba(0, 0, 0, 0.2);
+  }
+  
+  .coming-soon-container {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-gradient);
+    font-family: 'Poppins', sans-serif;
+    color: var(--text-color);
+    text-align: center;
+  }
+  
+  .content {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  
+  h1 {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    animation: fadeIn 2s ease-in-out;
+  }
+  
+  p {
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+  }
+  
+  .countdown {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 40px;
+  }
+  
+  .time-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    width: 100px;
+    height: 120px;
+    box-shadow: 0 8px 15px var(--shadow-color);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .time-block:hover {
+    transform: translateY(-10px);
+  }
+  
+  .number {
+    font-size: 2.8rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--secondary-color);
+    text-shadow: 2px 2px 5px var(--shadow-color);
+  }
+  
+  .label {
+    font-size: 1rem;
+    text-transform: uppercase;
+  }
+  
+  .email-notify {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  input {
+    padding: 12px;
+    border-radius: 30px;
+    border: none;
+    outline: none;
+    width: 250px;
+    font-size: 1rem;
+  }
+  
+  button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 30px;
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+    background-color: #ff4757;
+  }
+  
+  /* Animation for the heading */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 600px) {
+    .countdown {
+      flex-direction: column;
+      gap: 15px;
+    }
+  
+    input {
+      width: 200px;
+    }
+  
+    h1 {
+      font-size: 2.2rem;
+    }
+  }
+  
