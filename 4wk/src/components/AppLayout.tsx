@@ -17,7 +17,10 @@ interface AppLayoutProps {
   requireAuth?: boolean;
 }
 
-export default function AppLayout({ children, requireAuth = true }: AppLayoutProps) {
+export default function AppLayout({
+  children,
+  requireAuth = true,
+}: AppLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -73,7 +76,7 @@ export default function AppLayout({ children, requireAuth = true }: AppLayoutPro
         <div className="flex items-center gap-3">
           <Link href="/dashboard">
             <Image
-              src="/4wk.png"
+              src="/4wk.svg"
               alt="4WK Logo"
               width={40}
               height={40}
@@ -243,18 +246,18 @@ export default function AppLayout({ children, requireAuth = true }: AppLayoutPro
                       : "text-neutral-300 hover:bg-neutral-700 hover:text-white"
                   }`}
                 >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
                     className="h-5 w-5 mr-3 text-neutral-400"
-                    fill="none" 
-                    viewBox="0 0 24 24" 
+                    fill="none"
+                    viewBox="0 0 24 24"
                     stroke="currentColor"
                   >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" 
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                     />
                   </svg>
                   Job Cards
@@ -265,9 +268,7 @@ export default function AppLayout({ children, requireAuth = true }: AppLayoutPro
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );

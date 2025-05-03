@@ -96,7 +96,7 @@ export default function ClientsPage() {
       <header className="bg-black py-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Image
-            src="/4wk.png"
+            src="/4wk.svg"
             alt="4WK Logo"
             width={40}
             height={40}

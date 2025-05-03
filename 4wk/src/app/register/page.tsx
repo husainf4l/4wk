@@ -81,7 +81,7 @@ export default function RegisterPage() {
       <div className="w-full bg-black py-6 px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Image
-            src="/4wk.png"
+            src="/4wk.svg"
             alt="4wk Logo"
             width={40}
             height={40}

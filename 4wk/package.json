@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "firebase": "^11.6.1",
+    "idb": "^8.0.2",
     "next": "15.3.1",
+    "openai": "^4.97.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
