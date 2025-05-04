@@ -9,6 +9,7 @@ class DetailScreenHeader extends StatelessWidget {
   final Function()? onEditPressed;
   final Function()? onSavePressed;
   final Function()? onCancelPressed;
+  final Function()? shareAction;
 
   const DetailScreenHeader({
     super.key,
@@ -19,6 +20,7 @@ class DetailScreenHeader extends StatelessWidget {
     this.onEditPressed,
     this.onSavePressed,
     this.onCancelPressed,
+    this.shareAction,
   });
 
   @override
@@ -88,6 +90,12 @@ class DetailScreenHeader extends StatelessWidget {
                   icon: const Icon(Icons.cancel_outlined),
                   onPressed: isSaving ? null : onCancelPressed,
                   tooltip: 'Cancel Editing',
+                ),
+              if (!isEditing && shareAction != null)
+                IconButton(
+                  icon: Icon(Icons.share, color: const Color(0xFF25D366)),
+                  onPressed: shareAction,
+                  tooltip: 'Share via WhatsApp',
                 ),
               if (isSaving)
                 // Show loading indicator when saving

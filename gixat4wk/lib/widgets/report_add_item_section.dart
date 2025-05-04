@@ -541,7 +541,7 @@ class _ReportAddItemSectionState extends State<ReportAddItemSection> {
             color: isSelected ? color : Colors.grey[400]!,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? color.withOpacity(0.1) : null,
+          color: isSelected ? color.withAlpha(25) : null,
         ),
         child: Column(
           children: [
@@ -584,7 +584,7 @@ class _ReportAddItemSectionState extends State<ReportAddItemSection> {
   }
 }
 
-extension StringExtension on String {
+extension ReportItemStringExtension on String {
   String capitalize() {
     return isEmpty ? this : '${this[0].toUpperCase()}${substring(1)}';
   }

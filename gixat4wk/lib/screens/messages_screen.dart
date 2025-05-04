@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../services/chat_service.dart';
+import '../models/chat_message.dart';
+import 'chat_detail_screen.dart';
 
 class MessagesScreen extends StatelessWidget {
   const MessagesScreen({super.key});
@@ -7,9 +10,7 @@ class MessagesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // Sample chat data - in a real app, this would come from a database
-    final List<Map<String, dynamic>> chats = [];
+    final ChatService chatService = Get.find<ChatService>();
 
     return SafeArea(
       child: Padding(
@@ -52,16 +53,33 @@ class MessagesScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child:
-                  chats.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                        itemCount: chats.length,
-                        itemBuilder: (context, index) {
-                          final chat = chats[index];
-                          return _buildChatItem(context, chat, theme);
-                        },
-                      ),
+              child: Obx(() {
+                return chatService.sessions.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                      itemCount: chatService.sessions.length,
+                      itemBuilder: (context, index) {
+                        final session = chatService.sessions[index];
+                        return _buildChatItem(context, session, theme);
+                      },
+                    );
+              }),
+            ),
+            // FAB to start a new chat
+            Align(
+              alignment: Alignment.bottomRight,
+              child: FloatingActionButton(
+                onPressed: () {
+                  final newSession = chatService.createNewSession();
+                  Get.to(
+                    () => ChatDetailScreen(
+                      sessionId: newSession.id,
+                      title: newSession.name,
+                    ),
+                  );
+                },
+                child: const Icon(Icons.chat),
+              ),
             ),
           ],
         ),
@@ -82,9 +100,24 @@ class MessagesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Start a conversation with support or service centers',
+            'Start a conversation with the AI assistant',
             style: TextStyle(color: Colors.grey[500]),
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              final chatService = Get.find<ChatService>();
+              final newSession = chatService.createNewSession();
+              Get.to(
+                () => ChatDetailScreen(
+                  sessionId: newSession.id,
+                  title: newSession.name,
+                ),
+              );
+            },
+            icon: const Icon(Icons.chat),
+            label: const Text('Start a Conversation'),
           ),
         ],
       ),
@@ -93,7 +126,7 @@ class MessagesScreen extends StatelessWidget {
 
   Widget _buildChatItem(
     BuildContext context,
-    Map<String, dynamic> chat,
+    ChatSession session,
     ThemeData theme,
   ) {
     return Card(
@@ -103,10 +136,8 @@ class MessagesScreen extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          Get.snackbar(
-            'Chat',
-            'Opening chat with ${chat['name']}',
-            snackPosition: SnackPosition.BOTTOM,
+          Get.to(
+            () => ChatDetailScreen(sessionId: session.id, title: session.name),
           );
         },
         child: Padding(
@@ -115,15 +146,11 @@ class MessagesScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundImage: NetworkImage(chat['avatar']),
-                onBackgroundImageError: (_, __) {},
-                child:
-                    NetworkImage(chat['avatar']).toString().isEmpty
-                        ? Text(
-                          chat['name'].toString().substring(0, 1).toUpperCase(),
-                          style: const TextStyle(fontSize: 20),
-                        )
-                        : null,
+                backgroundColor: theme.colorScheme.primary.withAlpha(51),
+                child: Icon(
+                  Icons.chat_bubble_outline,
+                  color: theme.colorScheme.primary,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -134,16 +161,16 @@ class MessagesScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          chat['name'],
+                          session.name,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight:
-                                chat['unread'] > 0
+                                session.unreadCount > 0
                                     ? FontWeight.bold
                                     : FontWeight.normal,
                           ),
                         ),
                         Text(
-                          _getTimeAgo(chat['time']),
+                          _getTimeAgo(session.lastMessageTime),
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 12,
@@ -156,14 +183,14 @@ class MessagesScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            chat['lastMessage'],
+                            session.lastMessageText,
                             style: TextStyle(
                               color:
-                                  chat['unread'] > 0
+                                  session.unreadCount > 0
                                       ? Colors.black87
                                       : Colors.grey[600],
                               fontWeight:
-                                  chat['unread'] > 0
+                                  session.unreadCount > 0
                                       ? FontWeight.w500
                                       : FontWeight.normal,
                             ),
@@ -171,7 +198,7 @@ class MessagesScreen extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (chat['unread'] > 0)
+                        if (session.unreadCount > 0)
                           Container(
                             margin: const EdgeInsets.only(left: 8),
                             padding: const EdgeInsets.symmetric(
@@ -183,7 +210,7 @@ class MessagesScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              chat['unread'].toString(),
+                              session.unreadCount.toString(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,

@@ -301,7 +301,7 @@ class _ReportEditableImagesState extends State<ReportEditableImages> {
             right: 8,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withAlpha(153),
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -319,7 +319,7 @@ class _ReportEditableImagesState extends State<ReportEditableImages> {
             left: 8,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withAlpha(153),
                 borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

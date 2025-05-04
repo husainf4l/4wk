@@ -147,6 +147,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
         final session = Session(
           id: sessionId,
+          clientId: _clientId, // Add client ID
           car: car,
           client: client,
           garageId: _authController.currentUser?.garageId ?? '',

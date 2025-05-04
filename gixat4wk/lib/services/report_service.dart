@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ReportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -143,4 +145,42 @@ class ReportService {
       throw Exception('Failed to update report: $e');
     }
   }
+
+  // Generate AI content for report summary and recommendations
+  Future<Map<String, dynamic>> generateAIContent(
+    String reportId, {
+    bool updateFirebase = true,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://4wk.ae/api/ai/generate'),
+        headers: <String, String>{'Content-Type': 'application/json'},
+        body: jsonEncode(<String, dynamic>{
+          'reportId': reportId,
+          'updateFirebase': updateFirebase,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+
+        // Log the result
+        debugPrint(
+          'AI content generated successfully: ${result.toString().substring(0, min(100, result.toString().length))}...',
+        );
+
+        return result;
+      } else {
+        throw Exception('Failed to generate AI content: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Error generating AI content: $e');
+      throw Exception('Failed to generate AI content: $e');
+    }
+  }
+}
+
+// Helper for string truncation
+int min(int a, int b) {
+  return a < b ? a : b;
 }

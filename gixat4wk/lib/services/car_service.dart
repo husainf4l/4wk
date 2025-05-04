@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/car.dart';
+import '../models/client.dart'; // Added import for Client model
 import 'session_service.dart';
 
 class CarService {
@@ -22,16 +23,18 @@ class CarService {
         'carsId': FieldValue.arrayUnion([carId]),
       });
 
-      // Pass all car data to the session
+      // Pass all car data to the session using the enhanced SessionService
       final sessionId = await _sessionService.createSession(
         clientId: car.clientId,
-        clientName: car.clientName, // Pass client name
-        clientPhoneNumber: car.clientPhoneNumber, // Pass client phone number
+        clientName: car.clientName,
+        clientPhoneNumber: car.clientPhoneNumber,
         carId: carId,
-        carMake: car.make, // Pass car make
-        carModel: car.model, // Pass car model
-        plateNumber: car.plateNumber, // Pass plate number
+        carMake: car.make,
+        carModel: car.model,
+        plateNumber: car.plateNumber,
         garageId: car.garageId,
+        carYear: car.year,
+        carVin: car.vin,
       );
 
       if (sessionId != null) {
@@ -157,6 +160,20 @@ class CarService {
     } catch (e) {
       debugPrint('Error deleting car: $e');
       return false;
+    }
+  }
+
+  // Get client by ID
+  Future<dynamic> getClientById(String clientId) async {
+    try {
+      final doc = await _firestore.collection('clients').doc(clientId).get();
+      if (doc.exists) {
+        return doc.data() != null ? Client.fromFirestore(doc) : null;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting client by ID: $e');
+      return null;
     }
   }
 }

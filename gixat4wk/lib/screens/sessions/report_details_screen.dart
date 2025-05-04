@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/session.dart';
 import '../../services/report_service.dart';
-import '../../services/image_handling_service.dart';
 import '../../widgets/detail_screen_header.dart';
 import '../../widgets/notes_editor_widget.dart';
-import '../../widgets/image_grid_widget.dart';
 import '../sessions/session_details_screen.dart';
+import '../../widgets/report/image_manager_sheet.dart';
+import '../../widgets/report/requests_editor_sheet.dart';
+import '../../widgets/report/info_widgets.dart';
+import '../../widgets/report/report_section_widget.dart';
 
 class ReportDetailsScreen extends StatefulWidget {
   // Required parameter - only need sessionId
@@ -30,7 +32,6 @@ class ReportDetailsScreen extends StatefulWidget {
 
 class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   final ReportService _reportService = ReportService();
-  final ImageHandlingService _imageHandlingService = ImageHandlingService();
   final TextEditingController _summaryController = TextEditingController();
   final TextEditingController _recommendationsController =
       TextEditingController();
@@ -38,17 +39,13 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   final TextEditingController _clientCityController = TextEditingController();
   final TextEditingController _clientCountryController =
       TextEditingController();
-  final TextEditingController _newItemController = TextEditingController();
 
   // State variables
   bool _isLoading = true;
   bool _isSaving = false;
   bool _isEditing = false;
+  bool _isGeneratingAI = false;
   String? _errorMessage;
-  
-  // Active editing section tracking
-  String _activeEditSection = '';
-  final List<File> _selectedImages = [];
 
   // Session data
   Session? _session;
@@ -76,9 +73,6 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   Map<String, dynamic> _clientData = {};
   Map<String, dynamic> _carData = {};
 
-  // Rating (1-5)
-  int _conditionRating = 3;
-
   @override
   void initState() {
     super.initState();
@@ -98,7 +92,6 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     _clientPhoneController.dispose();
     _clientCityController.dispose();
     _clientCountryController.dispose();
-    _newItemController.dispose();
     super.dispose();
   }
 
@@ -232,7 +225,6 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 reportData['recommendations'] ?? '';
 
             // Set other report fields
-            _conditionRating = reportData['conditionRating'] ?? 3;
             _clientNotes = reportData['clientNotes'];
             _inspectionNotes = reportData['inspectionNotes'];
             _testDriveNotes = reportData['testDriveNotes'];
@@ -266,7 +258,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               );
             }
             if (reportData['testDriveImages'] != null) {
-              _testDriveImages = List<String>.from(reportData['testDriveImages']);
+              _testDriveImages = List<String>.from(
+                reportData['testDriveImages'],
+              );
             }
           });
           return;
@@ -274,68 +268,76 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       }
 
       // If no existing report or failed to load, gather data from source records
-      // Load client notes data if it exists
-      if (_session!.clientNoteId != null) {
-        final clientNotesData = await _reportService.getClientNotes(
-          _session!.clientNoteId!,
-        );
-        if (clientNotesData != null) {
-          setState(() {
-            _clientNotes = clientNotesData['notes'];
-            if (clientNotesData['requests'] != null) {
-              _clientRequests = List<Map<String, dynamic>>.from(
-                clientNotesData['requests'],
-              );
-            }
-            if (clientNotesData['images'] != null) {
-              _clientNotesImages = List<String>.from(clientNotesData['images']);
-            }
-          });
-        }
-      }
-
-      // Load inspection data if it exists
-      if (_session!.inspectionId != null) {
-        final inspectionData = await _reportService.getInspection(
-          _session!.inspectionId!,
-        );
-        if (inspectionData != null) {
-          setState(() {
-            _inspectionNotes = inspectionData['notes'];
-            if (inspectionData['findings'] != null) {
-              _inspectionFindings = List<Map<String, dynamic>>.from(
-                inspectionData['findings'],
-              );
-            }
-            if (inspectionData['images'] != null) {
-              _inspectionImages = List<String>.from(inspectionData['images']);
-            }
-          });
-        }
-      }
-
-      // Load test drive data if it exists
-      if (_session!.testDriveId != null) {
-        final testDriveData = await _reportService.getTestDrive(
-          _session!.testDriveId!,
-        );
-        if (testDriveData != null) {
-          setState(() {
-            _testDriveNotes = testDriveData['notes'];
-            if (testDriveData['observations'] != null) {
-              _testDriveObservations = List<Map<String, dynamic>>.from(
-                testDriveData['observations'],
-              );
-            }
-            if (testDriveData['images'] != null) {
-              _testDriveImages = List<String>.from(testDriveData['images']);
-            }
-          });
-        }
-      }
+      await _loadClientNotesData();
+      await _loadInspectionData();
+      await _loadTestDriveData();
     } catch (e) {
       setState(() {
         _errorMessage = 'Error loading report data: $e';
+      });
+    }
+  }
+
+  // Helper methods for loading data from individual sources
+  Future<void> _loadClientNotesData() async {
+    if (_session?.clientNoteId == null) return;
+
+    final clientNotesData = await _reportService.getClientNotes(
+      _session!.clientNoteId!,
+    );
+    if (clientNotesData != null) {
+      setState(() {
+        _clientNotes = clientNotesData['notes'];
+        if (clientNotesData['requests'] != null) {
+          _clientRequests = List<Map<String, dynamic>>.from(
+            clientNotesData['requests'],
+          );
+        }
+        if (clientNotesData['images'] != null) {
+          _clientNotesImages = List<String>.from(clientNotesData['images']);
+        }
+      });
+    }
+  }
+
+  Future<void> _loadInspectionData() async {
+    if (_session?.inspectionId == null) return;
+
+    final inspectionData = await _reportService.getInspection(
+      _session!.inspectionId!,
+    );
+    if (inspectionData != null) {
+      setState(() {
+        _inspectionNotes = inspectionData['notes'];
+        if (inspectionData['findings'] != null) {
+          _inspectionFindings = List<Map<String, dynamic>>.from(
+            inspectionData['findings'],
+          );
+        }
+        if (inspectionData['images'] != null) {
+          _inspectionImages = List<String>.from(inspectionData['images']);
+        }
+      });
+    }
+  }
+
+  Future<void> _loadTestDriveData() async {
+    if (_session?.testDriveId == null) return;
+
+    final testDriveData = await _reportService.getTestDrive(
+      _session!.testDriveId!,
+    );
+    if (testDriveData != null) {
+      setState(() {
+        _testDriveNotes = testDriveData['notes'];
+        if (testDriveData['observations'] != null) {
+          _testDriveObservations = List<Map<String, dynamic>>.from(
+            testDriveData['observations'],
+          );
+        }
+        if (testDriveData['images'] != null) {
+          _testDriveImages = List<String>.from(testDriveData['images']);
+        }
       });
     }
   }
@@ -387,293 +389,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       },
     );
   }
-  
-  // Method to edit an individual client request
-  void _editItemDialog(Map<String, dynamic> item, String type) {
-    final TextEditingController textController = TextEditingController(
-      text: type == 'request' 
-          ? item['request'] 
-          : type == 'finding' 
-              ? item['finding'] 
-              : item['observation'],
-    );
-    final priceController = TextEditingController(
-      text: (item['price'] ?? 0).toString(),
-    );
-    String selectedArgancy = item['argancy'] ?? 'low';
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text('Edit ${type.capitalize}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: textController,
-                decoration: InputDecoration(
-                  labelText: type.capitalize,
-                  border: const OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              
-              Text('Urgency Level:', style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 8),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildUrgencyButton(context, 'Low', Colors.green, selectedArgancy, 
-                    (value) => setState(() => selectedArgancy = value)),
-                  _buildUrgencyButton(context, 'Medium', Colors.orange, selectedArgancy, 
-                    (value) => setState(() => selectedArgancy = value)),
-                  _buildUrgencyButton(context, 'High', Colors.red, selectedArgancy, 
-                    (value) => setState(() => selectedArgancy = value)),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              TextField(
-                controller: priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Price (AED)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (textController.text.trim().isEmpty) return;
-                
-                if (type == 'request') {
-                  item['request'] = textController.text.trim();
-                } else if (type == 'finding') {
-                  item['finding'] = textController.text.trim();
-                } else {
-                  item['observation'] = textController.text.trim();
-                }
-                
-                item['argancy'] = selectedArgancy;
-                item['price'] = int.tryParse(priceController.text) ?? 0;
-                
-                setState(() {});
-                Navigator.pop(context);
-                this.setState(() {});
-              },
-              child: const Text('SAVE'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  // Add a new item dialog for requests, findings, or observations
-  void _addNewItemDialog(String type) {
-    final TextEditingController textController = TextEditingController();
-    final priceController = TextEditingController(text: '0');
-    String selectedArgancy = 'low';
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text('Add New ${type.capitalize}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: textController,
-                decoration: InputDecoration(
-                  labelText: type.capitalize,
-                  border: const OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              
-              Text('Urgency Level:', style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 8),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildUrgencyButton(context, 'Low', Colors.green, selectedArgancy, 
-                    (value) => setState(() => selectedArgancy = value)),
-                  _buildUrgencyButton(context, 'Medium', Colors.orange, selectedArgancy, 
-                    (value) => setState(() => selectedArgancy = value)),
-                  _buildUrgencyButton(context, 'High', Colors.red, selectedArgancy, 
-                    (value) => setState(() => selectedArgancy = value)),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              TextField(
-                controller: priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Price (AED)',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('CANCEL'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (textController.text.trim().isEmpty) return;
-                
-                Map<String, dynamic> newItem = {
-                  'argancy': selectedArgancy,
-                  'price': int.tryParse(priceController.text) ?? 0,
-                };
-                
-                if (type == 'request') {
-                  newItem['request'] = textController.text.trim();
-                  _clientRequests.add(newItem);
-                } else if (type == 'finding') {
-                  newItem['finding'] = textController.text.trim();
-                  _inspectionFindings.add(newItem);
-                } else {
-                  newItem['observation'] = textController.text.trim();
-                  _testDriveObservations.add(newItem);
-                }
-                
-                Navigator.pop(context);
-                this.setState(() {});
-              },
-              child: const Text('ADD'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  // Method to remove an item
-  void _removeItem(dynamic item, String type) {
-    setState(() {
-      if (type == 'request') {
-        _clientRequests.remove(item);
-      } else if (type == 'finding') {
-        _inspectionFindings.remove(item);
-      } else if (type == 'observation') {
-        _testDriveObservations.remove(item);
-      }
-    });
-  }
-  
-  // Method to change urgency directly
-  void _changeUrgency(dynamic item, String newUrgency) {
-    setState(() {
-      item['argancy'] = newUrgency;
-    });
-  }
-  
-  // Method to show image picker for different sections
-  void _showImagePicker(String section) {
-    setState(() {
-      _activeEditSection = section;
-    });
-    
-    _imageHandlingService.showImageSourceOptions(
-      context,
-      onImageSelected: (File? file) {
-        if (file != null && mounted) {
-          setState(() {
-            _selectedImages.add(file);
-          });
-        }
-      },
-      onMultipleImagesSelected: (List<File> files) {
-        if (mounted) {
-          setState(() {
-            _selectedImages.addAll(files);
-          });
-        }
-      },
-      allowMultiple: true,
-    );
-  }
-  
-  // Process selected images after picking
-  Future<void> _processSelectedImages() async {
-    if (_selectedImages.isEmpty) return;
-    
-    setState(() {
-      _isSaving = true;
-    });
-    
-    try {
-      // Upload images to Firebase Storage
-      final List<String> newImageUrls = await _imageHandlingService.uploadImagesToFirebase(
-        imageFiles: _selectedImages,
-        storagePath: 'report_images',
-        uniqueIdentifier: 'report_${widget.sessionId}',
-      );
-      
-      // Add new image URLs to the appropriate section
-      setState(() {
-        if (_activeEditSection == 'client') {
-          _clientNotesImages.addAll(newImageUrls);
-        } else if (_activeEditSection == 'inspection') {
-          _inspectionImages.addAll(newImageUrls);
-        } else if (_activeEditSection == 'testdrive') {
-          _testDriveImages.addAll(newImageUrls);
-        }
-        
-        _selectedImages.clear();
-      });
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to upload images: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    } finally {
-      setState(() {
-        _isSaving = false;
-      });
-    }
-  }
-  
-  // Remove image from a specific section
-  void _removeImage(int index, String section) {
-    setState(() {
-      if (section == 'client') {
-        _clientNotesImages.removeAt(index);
-      } else if (section == 'inspection') {
-        _inspectionImages.removeAt(index);
-      } else if (section == 'testdrive') {
-        _testDriveImages.removeAt(index);
-      }
-    });
-  }
 
   Future<void> _saveChanges() async {
     if (!mounted) return;
 
-    // Process any pending image uploads
-    await _processSelectedImages();
-    
     // Validate required IDs
     if (_clientId.isEmpty || _carId.isEmpty) {
       Get.snackbar(
@@ -714,7 +433,6 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       final Map<String, dynamic> reportData = {
         'summary': _summaryController.text,
         'recommendations': _recommendationsController.text,
-        'conditionRating': _conditionRating,
         'clientNotes': _clientNotes,
         'inspectionNotes': _inspectionNotes,
         'testDriveNotes': _testDriveNotes,
@@ -767,7 +485,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
         colorText: Colors.white,
       );
 
-      // Navigate directly back to the session details screen with updated session data
+      // Navigate back to the session details screen with updated session data
       final sessionDoc =
           await FirebaseFirestore.instance
               .collection('sessions')
@@ -776,12 +494,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
       if (sessionDoc.exists) {
         final sessionData = sessionDoc.data() as Map<String, dynamic>;
-        // Create Session object with both the map and ID
         final session = Session.fromMap(sessionData, widget.sessionId);
-        // Navigate to session details with updated session
         Get.off(() => SessionDetailsScreen(session: session));
       } else {
-        // If session doesn't exist for some reason, just go back
         Get.back(result: {'refresh': true});
       }
     } catch (e) {
@@ -805,57 +520,598 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     }
   }
 
+  // Generate AI summary and recommendations
+  Future<void> _generateAIContent() async {
+    // Make sure we have a reportId
+    if (widget.reportId == null) {
+      Get.snackbar(
+        'Error',
+        'Please save the report first before generating AI content',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    setState(() {
+      _isGeneratingAI = true;
+    });
+
+    try {
+      // Call the API to generate AI content
+      final result = await _reportService.generateAIContent(widget.reportId!);
+
+      // Since AI content updates Firebase directly, we need to re-fetch the updated report
+      final updatedReportData = await _reportService.getReport(
+        widget.reportId!,
+      );
+
+      if (updatedReportData != null) {
+        setState(() {
+          // Update from Firebase data
+          if (updatedReportData['summary'] != null) {
+            _summaryController.text = updatedReportData['summary'];
+          }
+
+          if (updatedReportData['recommendations'] != null) {
+            _recommendationsController.text =
+                updatedReportData['recommendations'];
+          }
+        });
+
+        Get.snackbar(
+          'Success',
+          'AI content generated successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+      } else {
+        // Fall back to using result from API if re-fetch fails
+        // Check for the correct response format where data is nested in a 'data' field
+        bool hasContent = false;
+
+        if (result.containsKey('success') &&
+            result['success'] == true &&
+            result.containsKey('data')) {
+          final data = result['data'] as Map<String, dynamic>;
+          setState(() {
+            if (data.containsKey('summary')) {
+              _summaryController.text = data['summary'];
+              hasContent = true;
+            }
+
+            if (data.containsKey('recommendations')) {
+              _recommendationsController.text = data['recommendations'];
+              hasContent = true;
+            }
+          });
+        } else if (result.containsKey('summary') ||
+            result.containsKey('recommendations')) {
+          // Legacy format handling for backward compatibility
+          setState(() {
+            if (result.containsKey('summary')) {
+              _summaryController.text = result['summary'];
+              hasContent = true;
+            }
+
+            if (result.containsKey('recommendations')) {
+              _recommendationsController.text = result['recommendations'];
+              hasContent = true;
+            }
+          });
+        }
+
+        if (hasContent) {
+          Get.snackbar(
+            'Success',
+            'AI content generated successfully',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+        } else {
+          Get.snackbar(
+            'Notice',
+            'No AI content was generated',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.amber,
+            colorText: Colors.black,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error generating AI content: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to generate AI content: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      setState(() {
+        _isGeneratingAI = false;
+      });
+    }
+  }
+
+  // Show the requests editor sheet
+  void _showEditRequestsDialog(String section) {
+    List<Map<String, dynamic>> items = [];
+    late Function(List<Map<String, dynamic>>) updateFunction;
+    String title = '';
+    String itemType = '';
+    String fieldName = '';
+
+    switch (section) {
+      case 'client':
+        items = List.from(_clientRequests);
+        updateFunction = (items) => setState(() => _clientRequests = items);
+        title = 'Client Service Requests';
+        itemType = 'request';
+        fieldName = 'request';
+        break;
+      case 'inspection':
+        items = List.from(_inspectionFindings);
+        updateFunction = (items) => setState(() => _inspectionFindings = items);
+        title = 'Inspection Findings';
+        itemType = 'finding';
+        fieldName = 'finding';
+        break;
+      case 'testdrive':
+        items = List.from(_testDriveObservations);
+        updateFunction =
+            (items) => setState(() => _testDriveObservations = items);
+        title = 'Test Drive Observations';
+        itemType = 'observation';
+        fieldName = 'observation';
+        break;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return RequestsEditorSheet(
+          title: title,
+          items: items,
+          itemType: itemType,
+          fieldName: fieldName,
+          onUpdate: updateFunction,
+        );
+      },
+    );
+  }
+
+  // Add a new request item
+  void _addNewRequest(String section) {
+    Map<String, dynamic> newItem = {
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'argancy': 'low',
+      'price': 0,
+      'visible': true,
+    };
+
+    switch (section) {
+      case 'client':
+        newItem['request'] = '';
+        _showEditRequestDialog(
+          newItem,
+          'request',
+          (item) => setState(() => _clientRequests.add(item)),
+        );
+        break;
+      case 'inspection':
+        newItem['finding'] = '';
+        _showEditRequestDialog(
+          newItem,
+          'finding',
+          (item) => setState(() => _inspectionFindings.add(item)),
+        );
+        break;
+      case 'testdrive':
+        newItem['observation'] = '';
+        _showEditRequestDialog(
+          newItem,
+          'observation',
+          (item) => setState(() => _testDriveObservations.add(item)),
+        );
+        break;
+    }
+  }
+
+  // Edit an existing request item
+  void _editRequest(Map<String, dynamic> item, String section) {
+    String fieldName;
+    Function(Map<String, dynamic>) updateFunction;
+
+    switch (section) {
+      case 'client':
+        fieldName = 'request';
+        updateFunction = (updatedItem) {
+          setState(() {
+            final index = _clientRequests.indexWhere(
+              (r) => r['id'] == item['id'],
+            );
+            if (index != -1) {
+              _clientRequests[index] = updatedItem;
+            }
+          });
+        };
+        break;
+      case 'inspection':
+        fieldName = 'finding';
+        updateFunction = (updatedItem) {
+          setState(() {
+            final index = _inspectionFindings.indexWhere(
+              (f) => f['id'] == item['id'],
+            );
+            if (index != -1) {
+              _inspectionFindings[index] = updatedItem;
+            }
+          });
+        };
+        break;
+      case 'testdrive':
+        fieldName = 'observation';
+        updateFunction = (updatedItem) {
+          setState(() {
+            final index = _testDriveObservations.indexWhere(
+              (o) => o['id'] == item['id'],
+            );
+            if (index != -1) {
+              _testDriveObservations[index] = updatedItem;
+            }
+          });
+        };
+        break;
+      default:
+        return;
+    }
+
+    _showEditRequestDialog(item, fieldName, updateFunction);
+  }
+
+  // Show dialog to edit a request item
+  void _showEditRequestDialog(
+    Map<String, dynamic> item,
+    String itemKey,
+    Function(Map<String, dynamic>) updateFunction,
+  ) {
+    final TextEditingController textController = TextEditingController(
+      text: item[itemKey] ?? '',
+    );
+    final TextEditingController priceController = TextEditingController(
+      text: (item['price'] ?? 0).toString(),
+    );
+    String currentUrgency = item['argancy'] ?? 'low';
+    bool isVisible = item['visible'] ?? true;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              title: Text(
+                'Edit ${itemKey[0].toUpperCase() + itemKey.substring(1)}',
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Description field
+                    TextField(
+                      controller: textController,
+                      maxLines: 3,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        labelStyle: TextStyle(color: Colors.grey[400]),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Price field
+                    TextField(
+                      controller: priceController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: 'Price (AED)',
+                        labelStyle: TextStyle(color: Colors.grey[400]),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Urgency selector
+                    Text(
+                      'Urgency Level',
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildUrgencyOption(
+                          'Low',
+                          Colors.green,
+                          currentUrgency,
+                          (value) =>
+                              setDialogState(() => currentUrgency = value),
+                        ),
+                        _buildUrgencyOption(
+                          'Medium',
+                          Colors.orange,
+                          currentUrgency,
+                          (value) =>
+                              setDialogState(() => currentUrgency = value),
+                        ),
+                        _buildUrgencyOption(
+                          'High',
+                          Colors.red,
+                          currentUrgency,
+                          (value) =>
+                              setDialogState(() => currentUrgency = value),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Visibility toggle
+                    Row(
+                      children: [
+                        Text(
+                          'Visible in Report',
+                          style: TextStyle(color: Colors.grey[400]),
+                        ),
+                        const Spacer(),
+                        Switch(
+                          value: isVisible,
+                          onChanged:
+                              (value) =>
+                                  setDialogState(() => isVisible = value),
+                          activeColor: Theme.of(context).primaryColor,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('CANCEL'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final updatedItem = Map<String, dynamic>.from(item);
+                    updatedItem[itemKey] = textController.text;
+                    updatedItem['argancy'] = currentUrgency;
+                    updatedItem['price'] =
+                        int.tryParse(priceController.text) ?? 0;
+                    updatedItem['visible'] = isVisible;
+
+                    updateFunction(updatedItem);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('SAVE'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Delete a request item
+  void _deleteRequest(Map<String, dynamic> item, String section) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            title: const Text('Delete Item'),
+            content: const Text(
+              'Are you sure you want to delete this item? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    switch (section) {
+                      case 'client':
+                        _clientRequests.removeWhere(
+                          (r) => r['id'] == item['id'],
+                        );
+                        break;
+                      case 'inspection':
+                        _inspectionFindings.removeWhere(
+                          (f) => f['id'] == item['id'],
+                        );
+                        break;
+                      case 'testdrive':
+                        _testDriveObservations.removeWhere(
+                          (o) => o['id'] == item['id'],
+                        );
+                        break;
+                    }
+                  });
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('DELETE'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Manage images for a section
+  void _manageImages(String section) {
+    List<String> images;
+    Function(List<String>) updateFunction;
+    String title;
+
+    switch (section) {
+      case 'client':
+        images = List.from(_clientNotesImages);
+        updateFunction =
+            (newList) => setState(() => _clientNotesImages = newList);
+        title = 'Client Notes Images';
+        break;
+      case 'inspection':
+        images = List.from(_inspectionImages);
+        updateFunction =
+            (newList) => setState(() => _inspectionImages = newList);
+        title = 'Inspection Images';
+        break;
+      case 'testdrive':
+        images = List.from(_testDriveImages);
+        updateFunction =
+            (newList) => setState(() => _testDriveImages = newList);
+        title = 'Test Drive Images';
+        break;
+      default:
+        return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return ImageManagerSheet(
+          title: title,
+          images: images,
+          onUpdate: updateFunction,
+        );
+      },
+    );
+  }
+
+  // Widget for urgency option selection in dialog
+  Widget _buildUrgencyOption(
+    String label,
+    Color color,
+    String currentValue,
+    Function(String) onChanged,
+  ) {
+    final isSelected = currentValue.toLowerCase() == label.toLowerCase();
+
+    return InkWell(
+      onTap: () => onChanged(label.toLowerCase()),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withAlpha(77) : Colors.transparent,
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.withAlpha(77),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? color : Colors.grey[400],
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Method to share the report via WhatsApp
+  void _shareViaWhatsApp() async {
+    if (widget.reportId == null) {
+      Get.snackbar(
+        'Error',
+        'Please save the report first before sharing',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final clientPhone = _clientPhoneController.text.trim();
+    if (clientPhone.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Client phone number is required for sharing',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    // Format the message text
+    String messageText =
+        'You can find your initial car report at this link 4wk.ae/report/${widget.reportId}';
+
+    // Format the phone number - remove any non-digit characters
+    String formattedPhone = clientPhone.replaceAll(RegExp(r'\D'), '');
+
+    // Make sure the phone number starts with a country code (default to UAE +971)
+
+    // Create the WhatsApp URL
+    final whatsappUrl = Uri.parse(
+      'https://wa.me/$formattedPhone?text=${Uri.encodeComponent(messageText)}',
+    );
+
+    // Try to launch WhatsApp
+    try {
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        Get.snackbar(
+          'Error',
+          'Could not launch WhatsApp. Please make sure WhatsApp is installed.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to open WhatsApp: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     if (_isLoading) {
-      return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
-            ),
-          ),
-        ),
-      );
+      return _buildLoadingScreen(theme);
     }
 
     if (_errorMessage != null) {
-      return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error Loading Report',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: Colors.red[400],
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => Get.back(),
-                    child: const Text('Go Back'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
+      return _buildErrorScreen(theme);
     }
 
     return Scaffold(
@@ -875,426 +1131,518 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               onSavePressed: _saveChanges,
               onEditPressed: _toggleEditMode,
               onCancelPressed: widget.reportId == null ? null : _toggleEditMode,
+              shareAction: !_isEditing ? _shareViaWhatsApp : null,
             ),
 
             // Main content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Report Date
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.primaryColor.withAlpha(26),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+            Expanded(child: _buildMainContent(theme)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper methods for building UI components
+  Widget _buildLoadingScreen(ThemeData theme) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen(ThemeData theme) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'Error Loading Report',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: Colors.red[400],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Get.back(),
+                  child: const Text('Go Back'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent(ThemeData theme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Report Date
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withAlpha(26),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Report Date',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.primaryColor,
+                  ),
+                ),
+                Text(
+                  DateFormat.yMMMd().format(DateTime.now()),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Client Information Section
+          _buildClientInfoSection(),
+
+          const SizedBox(height: 24),
+
+          // Car Information Section
+          _buildCarInfoSection(),
+
+          // Display Car Details
+          const SizedBox(height: 16),
+          Text(
+            'Car Details: $_carDetails',
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Report Summary
+          _buildReportSummarySection(theme),
+
+          const SizedBox(height: 24),
+
+          // Recommendations
+          _buildRecommendationsSection(theme),
+
+          const SizedBox(height: 24),
+
+          // Client Requests section
+          RequestsSectionWidget(
+            title: 'Client Service Requests',
+            section: 'client',
+            items: _clientRequests,
+            fieldName: 'request',
+            isEditing: _isEditing,
+            onEditAll: () => _showEditRequestsDialog('client'),
+            onAddNew: () => _addNewRequest('client'),
+            onEdit: (item) => _editRequest(item, 'client'),
+            onDelete: (item) => _deleteRequest(item, 'client'),
+          ),
+
+          // Client Notes Section
+          const SizedBox(height: 24),
+          NotesSectionWidget(
+            title: 'Client Notes',
+            notes: _clientNotes,
+            isEditing: _isEditing,
+            onEdit: _showEditClientNotesDialog,
+          ),
+
+          // Client Notes Images
+          if (_isEditing || _clientNotesImages.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ImagesSectionWidget(
+              title: 'Client Notes Images',
+              section: 'client',
+              images: _clientNotesImages,
+              isEditing: _isEditing,
+              onManageImages: () => _manageImages('client'),
+              onRemoveImage:
+                  _isEditing
+                      ? (index) =>
+                          setState(() => _clientNotesImages.removeAt(index))
+                      : null,
+            ),
+          ],
+
+          // Inspection Findings section
+          const SizedBox(height: 24),
+          RequestsSectionWidget(
+            title: 'Inspection Findings',
+            section: 'inspection',
+            items: _inspectionFindings,
+            fieldName: 'finding',
+            isEditing: _isEditing,
+            onEditAll: () => _showEditRequestsDialog('inspection'),
+            onAddNew: () => _addNewRequest('inspection'),
+            onEdit: (item) => _editRequest(item, 'inspection'),
+            onDelete: (item) => _deleteRequest(item, 'inspection'),
+          ),
+
+          // Inspection Notes Section
+          const SizedBox(height: 24),
+          NotesSectionWidget(
+            title: 'Inspection Notes',
+            notes: _inspectionNotes,
+            isEditing: _isEditing,
+            onEdit: _showEditInspectionNotesDialog,
+          ),
+
+          // Inspection Images
+          if (_isEditing || _inspectionImages.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ImagesSectionWidget(
+              title: 'Inspection Images',
+              section: 'inspection',
+              images: _inspectionImages,
+              isEditing: _isEditing,
+              onManageImages: () => _manageImages('inspection'),
+              onRemoveImage:
+                  _isEditing
+                      ? (index) =>
+                          setState(() => _inspectionImages.removeAt(index))
+                      : null,
+            ),
+          ],
+
+          // Test Drive Observations section
+          const SizedBox(height: 24),
+          RequestsSectionWidget(
+            title: 'Test Drive Observations',
+            section: 'testdrive',
+            items: _testDriveObservations,
+            fieldName: 'observation',
+            isEditing: _isEditing,
+            onEditAll: () => _showEditRequestsDialog('testdrive'),
+            onAddNew: () => _addNewRequest('testdrive'),
+            onEdit: (item) => _editRequest(item, 'testdrive'),
+            onDelete: (item) => _deleteRequest(item, 'testdrive'),
+          ),
+
+          // Test Drive Notes Section
+          const SizedBox(height: 24),
+          NotesSectionWidget(
+            title: 'Test Drive Notes',
+            notes: _testDriveNotes,
+            isEditing: _isEditing,
+            onEdit: _showEditTestDriveNotesDialog,
+          ),
+
+          // Test Drive Images
+          if (_isEditing || _testDriveImages.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ImagesSectionWidget(
+              title: 'Test Drive Images',
+              section: 'testdrive',
+              images: _testDriveImages,
+              isEditing: _isEditing,
+              onManageImages: () => _manageImages('testdrive'),
+              onRemoveImage:
+                  _isEditing
+                      ? (index) =>
+                          setState(() => _testDriveImages.removeAt(index))
+                      : null,
+            ),
+          ],
+
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  // Section builder methods
+  Widget _buildClientInfoSection() {
+    return ReportSectionWidget(
+      title: 'Client Information',
+      child: Column(
+        children: [
+          InfoRow(label: 'Name', value: _clientName),
+          const SizedBox(height: 8),
+          _isEditing
+              ? TextFieldRow(
+                label: 'Phone',
+                controller: _clientPhoneController,
+                keyboardType: TextInputType.phone,
+              )
+              : InfoRow(label: 'Phone', value: _clientPhoneController.text),
+          const SizedBox(height: 8),
+          _isEditing
+              ? Column(
+                children: [
+                  TextFieldRow(
+                    label: 'City',
+                    controller: _clientCityController,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFieldRow(
+                    label: 'Country',
+                    controller: _clientCountryController,
+                  ),
+                ],
+              )
+              : Column(
+                children: [
+                  InfoRow(label: 'City', value: _clientCityController.text),
+                  const SizedBox(height: 8),
+                  InfoRow(
+                    label: 'Country',
+                    value: _clientCountryController.text,
+                  ),
+                ],
+              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCarInfoSection() {
+    return ReportSectionWidget(
+      title: 'Vehicle Information',
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          if (_carData['make'] != null)
+            InfoRow(label: 'Make', value: _carData['make']),
+          if (_carData['model'] != null) ...[
+            const SizedBox(height: 8),
+            InfoRow(label: 'Model', value: _carData['model']),
+          ],
+          if (_carData['year'] != null) ...[
+            const SizedBox(height: 8),
+            InfoRow(label: 'Year', value: _carData['year'].toString()),
+          ],
+          if (_carData['plateNumber'] != null) ...[
+            const SizedBox(height: 8),
+            InfoRow(label: 'Plate', value: _carData['plateNumber']),
+          ],
+          if (_carData['vin'] != null) ...[
+            const SizedBox(height: 8),
+            InfoRow(label: 'VIN', value: _carData['vin']),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportSummarySection(ThemeData theme) {
+    return ReportSectionWidget(
+      title: 'Summary',
+      padding: const EdgeInsets.all(16),
+      actions:
+          _isEditing
+              ? [
+                IconButton(
+                  icon: Icon(
+                    Icons.auto_awesome,
+                    color: theme.primaryColor,
+                    size: 20,
+                  ),
+                  tooltip: 'Generate AI Summary',
+                  onPressed: _isGeneratingAI ? null : _generateAIContent,
+                ),
+              ]
+              : null,
+      child:
+          _isEditing
+              ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isGeneratingAI)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.primaryColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text(
-                            'Report Date:',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white,
+                            'Generating AI content...',
+                            style: TextStyle(
+                              color: theme.primaryColor,
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                  TextField(
+                    controller: _summaryController,
+                    maxLines: 5,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black12,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.grey.withAlpha(77),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.grey.withAlpha(77),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: theme.primaryColor),
+                      ),
+                      hintText: 'Enter a summary of the vehicle inspection',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                    ),
+                  ),
+                ],
+              )
+              : Text(
+                _summaryController.text.isNotEmpty
+                    ? _summaryController.text
+                    : 'No summary provided',
+                style: TextStyle(
+                  color:
+                      _summaryController.text.isNotEmpty
+                          ? Colors.white
+                          : Colors.grey[500],
+                  fontStyle:
+                      _summaryController.text.isNotEmpty
+                          ? FontStyle.normal
+                          : FontStyle.italic,
+                ),
+              ),
+    );
+  }
+
+  Widget _buildRecommendationsSection(ThemeData theme) {
+    return ReportSectionWidget(
+      title: 'Recommendations',
+      padding: const EdgeInsets.all(16),
+      actions:
+          _isEditing
+              ? [
+                IconButton(
+                  icon: Icon(
+                    Icons.auto_awesome,
+                    color: theme.primaryColor,
+                    size: 20,
+                  ),
+                  tooltip: 'Generate AI Recommendations',
+                  onPressed: _isGeneratingAI ? null : _generateAIContent,
+                ),
+              ]
+              : null,
+      child:
+          _isEditing
+              ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isGeneratingAI)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.primaryColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text(
-                            DateFormat('MMM dd, yyyy').format(DateTime.now()),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                            'Generating AI content...',
+                            style: TextStyle(
+                              color: theme.primaryColor,
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 24),
-
-                    // Client Information Section
-                    _buildSectionHeader('Client Information'),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: _getSectionDecoration(theme),
-                      child: Column(
-                        children: [
-                          // Client name (non-editable)
-                          InfoRow(
-                            label: 'Name',
-                            value: _clientData['name'] ?? '',
-                            isEditing: false,
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Phone (editable)
-                          _isEditing
-                              ? TextFieldRow(
-                                label: 'Phone',
-                                controller: _clientPhoneController,
-                              )
-                              : InfoRow(
-                                label: 'Phone',
-                                value: _clientPhoneController.text,
-                                isEditing: false,
-                              ),
-
-                          const SizedBox(height: 12),
-
-                          // City (editable)
-                          _isEditing
-                              ? TextFieldRow(
-                                label: 'City',
-                                controller: _clientCityController,
-                              )
-                              : InfoRow(
-                                label: 'City',
-                                value: _clientCityController.text,
-                                isEditing: false,
-                              ),
-
-                          const SizedBox(height: 12),
-
-                          // Country (editable)
-                          _isEditing
-                              ? TextFieldRow(
-                                label: 'Country',
-                                controller: _clientCountryController,
-                              )
-                              : InfoRow(
-                                label: 'Country',
-                                value: _clientCountryController.text,
-                                isEditing: false,
-                              ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Car Information Section
-                    _buildSectionHeader('Vehicle Information'),
-                    const SizedBox(height: 8),
-                    Text(
-                      _carDetails,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: _getSectionDecoration(theme),
-                      child: Column(
-                        children: [
-                          // Make
-                          InfoRow(
-                            label: 'Make',
-                            value: _carData['make'] ?? '',
-                            isEditing: false,
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Model
-                          InfoRow(
-                            label: 'Model',
-                            value: _carData['model'] ?? '',
-                            isEditing: false,
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Year
-                          InfoRow(
-                            label: 'Year',
-                            value:
-                                _carData['year'] != null
-                                    ? _carData['year'].toString()
-                                    : '',
-                            isEditing: false,
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Plate number
-                          InfoRow(
-                            label: 'Plate Number',
-                            value: _carData['plateNumber'] ?? '',
-                            isEditing: false,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Condition Rating
-                    _buildSectionHeader('Vehicle Condition Rating'),
-                    const SizedBox(height: 12),
-
-                    _isEditing
-                        ? Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: List.generate(5, (index) {
-                            final rating = index + 1;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _conditionRating = rating;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                  horizontal: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      rating == _conditionRating
-                                          ? theme.primaryColor
-                                          : Colors.black12,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color:
-                                        rating == _conditionRating
-                                            ? theme.primaryColor
-                                            : Colors.grey.withAlpha(77),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Text(
-                                  rating.toString(),
-                                  style: TextStyle(
-                                    color:
-                                        rating == _conditionRating
-                                            ? Colors.black
-                                            : Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                        )
-                        : Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: _getSectionDecoration(theme),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Rating: ',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                '$_conditionRating / 5',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: _getRatingColor(_conditionRating),
-                                ),
-                              ),
-                              Text(
-                                ' (${_getRatingText(_conditionRating)})',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                    const SizedBox(height: 8),
-                    Text(
-                      '1 = Poor, 5 = Excellent',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[500],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Report Summary
-                    _buildSectionHeader('Summary'),
-                    const SizedBox(height: 12),
-                    _isEditing
-                        ? TextField(
-                          controller: _summaryController,
-                          maxLines: 5,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.black12,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Colors.grey.withAlpha(77),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Colors.grey.withAlpha(77),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: theme.primaryColor),
-                            ),
-                            hintText:
-                                'Enter a summary of the vehicle inspection',
-                            hintStyle: TextStyle(color: Colors.grey[500]),
-                          ),
-                        )
-                        : Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: _getSectionDecoration(theme),
-                          child: Text(
-                            _summaryController.text.isNotEmpty
-                                ? _summaryController.text
-                                : 'No summary provided',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color:
-                                  _summaryController.text.isNotEmpty
-                                      ? Colors.white
-                                      : Colors.grey[500],
-                              fontStyle:
-                                  _summaryController.text.isNotEmpty
-                                      ? FontStyle.normal
-                                      : FontStyle.italic,
-                            ),
-                          ),
-                        ),
-
-                    const SizedBox(height: 24),
-
-                    // Recommendations
-                    _buildSectionHeader('Recommendations'),
-                    const SizedBox(height: 12),
-                    _isEditing
-                        ? TextField(
-                          controller: _recommendationsController,
-                          maxLines: 5,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.black12,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Colors.grey.withAlpha(77),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: Colors.grey.withAlpha(77),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: theme.primaryColor),
-                            ),
-                            hintText:
-                                'Enter your recommendations for the vehicle',
-                            hintStyle: TextStyle(color: Colors.grey[500]),
-                          ),
-                        )
-                        : Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: _getSectionDecoration(theme),
-                          child: Text(
-                            _recommendationsController.text.isNotEmpty
-                                ? _recommendationsController.text
-                                : 'No recommendations provided',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color:
-                                  _recommendationsController.text.isNotEmpty
-                                      ? Colors.white
-                                      : Colors.grey[500],
-                              fontStyle:
-                                  _recommendationsController.text.isNotEmpty
-                                      ? FontStyle.normal
-                                      : FontStyle.italic,
-                            ),
-                          ),
-                        ),
-
-                    const SizedBox(height: 24),
-
-                    // Client Notes & Requests Section
-                    _buildSectionHeader('Client Notes & Requests', 
-                      trailing: _isEditing 
-                        ? IconButton(
-                            icon: const Icon(Icons.add_circle, color: Colors.white),
-                            onPressed: () => _addNewItemDialog('request'),
-                            tooltip: 'Add new request',
-                          )
-                        : null
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Client Notes
-                    if (_clientNotes != null) ...[
-                      Text(
-                        'Client Notes',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
+                  TextField(
+                    controller: _recommendationsController,
+                    maxLines: 5,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black12,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.grey.withAlpha(77),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      NotesEditorWidget(
-                        notes: _clientNotes,
-                        isEditing: _isEditing,
-                        onEditPressed: _showEditClientNotesDialog,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: Colors.grey.withAlpha(77),
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Client Images
-                    _buildImageSection(
-                      'Client Images', 
-                      _clientNotesImages, 
-                      'client', 
-                      _isEditing
-                    ),
-
-                    // Client Requests
-                    const SizedBox(height: 16),
-                    Text(
-                      'Client Requests',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white70,
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: theme.primaryColor),
                       ),
+                      hintText: 'Enter your recommendations for the vehicle',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
                     ),
-                    const SizedBox(height: 8),
-                    
-                    if (_clientRequests.isEmpty) 
-                      _buildEmptyState('No client requests found'),
-                    
-                    ..._clientRequests.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final request = entry.value;
-                      return _buildItemCard(
-                        request, 
-                        'request', 
-                        theme,
-                        index: index,
-                      );
-                    }).toList(),
-
-                    const SizedBox(height: 24),
-
-                    // Inspection Section
+                  ),
+                ],
+              )
+              : Text(
+                _recommendationsController.text.isNotEmpty
+                    ? _recommendationsController.text
+                    : 'No recommendations provided',
+                style: TextStyle(
+                  color:
+                      _recommendationsController.text.isNotEmpty
+                          ? Colors.white
+                          : Colors.grey[500],
+                  fontStyle:
+                      _recommendationsController.text.isNotEmpty
+                          ? FontStyle.normal
+                          : FontStyle.italic,
+                ),
+              ),
+    );
+  }
+}

@@ -39,7 +39,7 @@ class ClientNotesService {
         'carId': carId,
         'clientId': clientId,
         'notes': notes,
-        'requests': requests ?? [],
+        'requests': requests,
         'images': validImages,
         'type': 'clientNotes',
         'timestamp': FieldValue.serverTimestamp(),
@@ -109,7 +109,7 @@ class ClientNotesService {
     try {
       final updateData = {
         'notes': notes,
-        'requests': requests ?? [],
+        'requests': requests,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 

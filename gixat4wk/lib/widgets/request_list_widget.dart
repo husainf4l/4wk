@@ -48,7 +48,6 @@ class RequestListWidget extends StatelessWidget {
       itemBuilder: (context, index) {
         final request = requests[index];
         final argancy = request['argancy'] ?? 'low';
-        final price = request['price'] ?? 0;
 
         Color argancyColor;
         switch (argancy) {
@@ -141,7 +140,7 @@ class RequestListWidget extends StatelessWidget {
             color: isSelected ? color : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? color.withOpacity(0.1) : null,
+          color: isSelected ? color.withAlpha(77) : null,
         ),
         child: Row(
           children: [
@@ -272,7 +271,7 @@ class RequestListWidget extends StatelessWidget {
             color: isSelected ? color : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? color.withOpacity(0.1) : null,
+          color: isSelected ? color.withAlpha(77) : null,
         ),
         child: Column(
           children: [

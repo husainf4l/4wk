@@ -218,10 +218,10 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
                                 Navigator.of(context).pop();
                                 widget.onDelete(widget.item);
                               },
-                              child: const Text('DELETE'),
                               style: TextButton.styleFrom(
                                 foregroundColor: Colors.red,
                               ),
+                              child: const Text('DELETE'),
                             ),
                           ],
                         ),
@@ -309,7 +309,7 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.3) : Colors.transparent,
+          color: isSelected ? color.withAlpha(76) : Colors.transparent,
           border: Border.all(
             color: isSelected ? color : Colors.grey.withAlpha(77),
             width: isSelected ? 2 : 1,

@@ -54,13 +54,18 @@ class SessionService {
     required String carModel,
     required String plateNumber,
     required String garageId,
+    int? carYear, // Added optional car year
+    String? carVin, // Added optional car VIN
+    Map<String, dynamic>? additionalData, // For any additional fields
   }) async {
     try {
       final Map<String, dynamic> sessionData = {
+        'clientId': clientId, // Store clientId at root level
+        'carId': carId, // Store carId at root level
         'client': {
           'id': clientId,
           'name': clientName,
-          'phoneNumber': clientPhoneNumber,
+          'phone': clientPhoneNumber, // Consistent field name (phone)
         },
         'car': {
           'id': carId,
@@ -71,7 +76,23 @@ class SessionService {
         'garageId': garageId,
         'status': 'OPEN',
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(), // Added updatedAt field
       };
+
+      // Add optional car fields if provided
+      if (carYear != null) {
+        sessionData['car']['year'] =
+            carYear.toString(); // Convert int to string
+      }
+
+      if (carVin != null && carVin.isNotEmpty) {
+        sessionData['car']['vin'] = carVin;
+      }
+
+      // Add any additional custom fields
+      if (additionalData != null) {
+        sessionData.addAll(additionalData);
+      }
 
       final docRef = await _sessionsCollection.add(sessionData);
       final sessionId = docRef.id;
@@ -143,6 +164,7 @@ class SessionService {
           await _sessionsCollection
               .where('client.id', isEqualTo: clientId)
               .orderBy('createdAt', descending: true)
+              .limit(50)
               .get();
 
       return querySnapshot.docs;

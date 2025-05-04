@@ -1,5 +1,6 @@
 class Session {
   final String id;
+  final String clientId; // Add clientId as a dedicated field
   final Map<String, dynamic> car; // Nested car object
   final Map<String, dynamic> client; // Nested client object
   final String garageId;
@@ -13,6 +14,7 @@ class Session {
 
   Session({
     required this.id,
+    required this.clientId, // Add to constructor
     required this.car,
     required this.client,
     required this.garageId,
@@ -27,6 +29,7 @@ class Session {
 
   Map<String, dynamic> toMap() {
     return {
+      'clientId': clientId, // Add to map
       'car': car,
       'client': client,
       'garageId': garageId,
@@ -43,6 +46,10 @@ class Session {
   factory Session.fromMap(Map<String, dynamic> map, String id) {
     return Session(
       id: id,
+      clientId:
+          map['clientId'] ??
+          map['client']?['id'] ??
+          '', // Try to get clientId or fallback to client.id
       car: map['car'] ?? {},
       client: map['client'] ?? {},
       garageId: map['garageId'] ?? '',

@@ -9,6 +9,8 @@ import 'screens/garage_setup_screen.dart'; // Import the new garage setup screen
 import 'theme/app_theme.dart';
 import 'services/database_service.dart';
 import 'services/error_service.dart'; // Import the new error service
+import 'services/image_handling_service.dart'; // Import ImageHandlingService
+import 'services/chat_service.dart'; // Import ChatService
 
 void main() async {
   // Ensure Flutter is initialized
@@ -31,6 +33,12 @@ void main() async {
 
     // Connect DatabaseService with ErrorService
     databaseService.setErrorService(errorService);
+
+    // Register ImageHandlingService
+    Get.put(ImageHandlingService());
+
+    // Register ChatService
+    await Get.putAsync(() => ChatService().init());
 
     // Initialize the AuthController after services are set up
     Get.put(AuthController());

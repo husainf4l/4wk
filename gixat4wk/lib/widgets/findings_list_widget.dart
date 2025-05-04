@@ -139,7 +139,7 @@ class FindingsListWidget extends StatelessWidget {
             color: isSelected ? color : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? color.withOpacity(0.1) : null,
+          color: isSelected ? color.withAlpha(25) : null,
         ),
         child: Row(
           children: [
@@ -270,7 +270,7 @@ class FindingsListWidget extends StatelessWidget {
             color: isSelected ? color : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? color.withOpacity(0.1) : null,
+          color: isSelected ? color.withAlpha(25) : null,
         ),
         child: Column(
           children: [
