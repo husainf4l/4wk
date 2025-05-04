@@ -173,3 +173,28 @@ export const generateAndUpdateReportAI = async (reportId: string): Promise<void>
     throw error;
   }
 };
+
+/**
+ * Updates a report with client feedback notes
+ * @param reportId The ID of the report to update
+ * @param feedbackNotes The feedback notes from the client
+ */
+export const updateReportFeedback = async (reportId: string, feedbackNotes: string): Promise<void> => {
+  try {
+    console.log(`Updating feedback notes for report ${reportId}`);
+    
+    // Get the document reference
+    const reportRef = doc(db, "reports", reportId);
+    
+    // Update the document with the feedback notes and timestamp
+    await updateDoc(reportRef, {
+      feedbackNotes,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log(`Report ${reportId} successfully updated with feedback notes`);
+  } catch (error) {
+    console.error("Error in updateReportFeedback:", error);
+    throw error;
+  }
+};
