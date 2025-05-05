@@ -7,11 +7,12 @@ const ComingSoon = () => (
     <div className="bg-white p-10 rounded-3xl shadow-2xl text-center max-w-md w-full">
       <div className="relative h-12 mx-auto mb-6">
         <Image
-          src="/4wk.svg"
-          alt="Logo"
-          fill
-          style={{ objectFit: "contain" }}
-          priority
+          src="/4wk.png"
+          alt="4WK Logo"
+          width={192}
+          height={24}
+          quality={100}
+          className="rounded-md mb-6"
         />
       </div>
       <h1 className="text-4xl font-bold text-neutral-900 mb-4">Coming Soon</h1>

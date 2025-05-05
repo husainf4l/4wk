@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useEffect } from "react";
+import { useState } from "react";
 import { updateReportFeedback } from "@/services/firebase.service";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { useToast } from "@/components/ToastContext";
@@ -9,30 +9,12 @@ export default function ClientFeedbackForm({
 }: {
   sessionId: string;
 }) {
-  const [clientNotes, setClientNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { handleError } = useErrorHandler();
   const { showToast } = useToast();
 
   // Check localStorage on component mount to see if this form was already submitted
-  useEffect(() => {
-    const checkSubmissionStatus = () => {
-      const submittedForms = localStorage.getItem("submittedFeedbackForms");
-      if (submittedForms) {
-        const forms = JSON.parse(submittedForms);
-        if (forms.includes(sessionId)) {
-          setSubmitted(true);
-        }
-      }
-    };
-
-    checkSubmissionStatus();
-    // Removed the autofocus code that was here
-  }, [sessionId]);
-
-  // Function to save submission status to localStorage
   const saveSubmissionStatus = () => {
     const submittedForms = localStorage.getItem("submittedFeedbackForms");
     const forms = submittedForms ? JSON.parse(submittedForms) : [];
@@ -63,63 +45,31 @@ export default function ClientFeedbackForm({
           </svg>
         </div>
         <h3 className="text-white text-2xl font-bold mb-2 text-center">
-          Thank You!
+          Marked as Seen
         </h3>
         <p className="text-neutral-300 text-base text-center max-w-md mb-4">
-          Your feedback has been received. We appreciate your input and will use
-          it to improve our service.
+          This report has been marked as seen.
         </p>
-        <div className="text-green-400 font-semibold text-lg mt-2">
-          ✔️ Submission Complete
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-r from-neutral-800 to-neutral-900 rounded-lg p-5 border border-neutral-700/50">
-      <div className="mb-6">
-        <h3 className="text-white font-medium text-base sm:text-lg mb-2">
-          Your Response
-        </h3>
-        <p className="text-neutral-400 text-sm">
-          Take a look at the issues we&apos;ve found so far. If you remember
-          anything else or have any extra notes -- even small things -- just let
-          us know. We&apos;re here to make sure everything&apos;s covered for
-          you.
-        </p>
-      </div>
-      <div className="mb-6">
-        <label
-          htmlFor="client-notes"
-          className="block text-white font-medium text-sm mb-2"
-        >
-          Additional Notes
-        </label>
-        <textarea
-          id="client-notes"
-          ref={textareaRef}
-          className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500"
-          rows={4}
-          placeholder="Add any additional requests, questions, or feedback here..."
-          value={clientNotes}
-          onChange={(e) => setClientNotes(e.target.value)}
-        ></textarea>
-      </div>
-      <div className="flex flex-wrap gap-3 justify-end">
+    <div className="">
+      <div className="flex justify-center">
         <button
           onClick={async () => {
             try {
               setSubmitting(true);
-              await updateReportFeedback(sessionId, clientNotes);
+              await updateReportFeedback(sessionId, "Mark as seen");
               setSubmitted(true);
               // Save submission status to localStorage
               saveSubmissionStatus();
-              showToast("Feedback submitted successfully!", "success");
+              showToast("Report marked as seen!", "success");
             } catch (error) {
               handleError(error);
               showToast(
-                "Failed to submit feedback. Please try again.",
+                "Failed to mark report as seen. Please try again.",
                 "error"
               );
             } finally {
@@ -158,7 +108,7 @@ export default function ClientFeedbackForm({
               Processing...
             </>
           ) : (
-            <>Submit Notes</>
+            <>Mark as Seen</>
           )}
         </button>
       </div>

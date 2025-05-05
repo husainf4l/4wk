@@ -1,9 +1,9 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { ReportData, getReportBySessionId } from "@/services/firebase.service";
 import useErrorHandler from "@/hooks/useErrorHandler";
 import { useToast } from "@/components/ToastContext";
@@ -33,7 +33,6 @@ interface FindingItem extends Record<string, unknown> {
 
 export default function ReportDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const sessionId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -48,18 +47,8 @@ export default function ReportDetailPage() {
   const { error, handleError } = useErrorHandler();
   const { showToast } = useToast();
 
-  useEffect(() => {
-    // Check if the user is already authenticated for this report
-    const authStatus = sessionStorage.getItem(`report_auth_${sessionId}`);
-    if (authStatus === "authenticated") {
-      fetchReport(undefined);
-    } else {
-      // Just check if the report exists and if it needs a password
-      checkReportAccess();
-    }
-  }, [sessionId]);
-
-  const checkReportAccess = async () => {
+  // Use useCallback to memoize functions used in useEffect
+  const checkReportAccess = useCallback(async () => {
     setLoading(true);
     try {
       const reportData = await getReportBySessionId(sessionId);
@@ -84,45 +73,59 @@ export default function ReportDetailPage() {
       showToast("Failed to load report", "error");
       setLoading(false);
     }
-  };
+  }, [sessionId, handleError, showToast]);
 
-  const fetchReport = async (password?: string) => {
-    try {
-      setLoading(true);
-      const reportData = await getReportBySessionId(sessionId, password);
+  const fetchReport = useCallback(
+    async (password?: string) => {
+      try {
+        setLoading(true);
+        const reportData = await getReportBySessionId(sessionId, password);
 
-      // Check if the report is password protected
-      if (reportData && "passwordProtected" in reportData) {
-        setIsPasswordProtected(true);
-        setPasswordError(!!password); // If password was provided but we still get passwordProtected, it was wrong
-        setLoading(false);
-        return;
-      }
-
-      // If we got a full report back
-      setReport(reportData);
-      // Clear password protection state when we get full report data
-      setIsPasswordProtected(false);
-
-      if (!reportData) {
-        handleError(
-          "No report found with this session ID. Please check and try again."
-        );
-      } else {
-        // Save authentication state in session storage
-        if (password) {
-          sessionStorage.setItem(`report_auth_${sessionId}`, "authenticated");
+        // Check if the report is password protected
+        if (reportData && "passwordProtected" in reportData) {
+          setIsPasswordProtected(true);
+          setPasswordError(!!password); // If password was provided but we still get passwordProtected, it was wrong
+          setLoading(false);
+          return;
         }
 
-        showToast("Report loaded successfully", "success");
+        // If we got a full report back
+        setReport(reportData);
+        // Clear password protection state when we get full report data
+        setIsPasswordProtected(false);
+
+        if (!reportData) {
+          handleError(
+            "No report found with this session ID. Please check and try again."
+          );
+        } else {
+          // Save authentication state in session storage
+          if (password) {
+            sessionStorage.setItem(`report_auth_${sessionId}`, "authenticated");
+          }
+
+          showToast("Report loaded successfully", "success");
+        }
+      } catch (err) {
+        handleError(err);
+        showToast("Failed to load report", "error");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      handleError(err);
-      showToast("Failed to load report", "error");
-    } finally {
-      setLoading(false);
+    },
+    [sessionId, handleError, showToast]
+  );
+
+  useEffect(() => {
+    // Check if the user is already authenticated for this report
+    const authStatus = sessionStorage.getItem(`report_auth_${sessionId}`);
+    if (authStatus === "authenticated") {
+      fetchReport(undefined);
+    } else {
+      // Just check if the report exists and if it needs a password
+      checkReportAccess();
     }
-  };
+  }, [sessionId, checkReportAccess, fetchReport]);
 
   const handlePasswordSubmit = (password: string) => {
     setPasswordError(false);
@@ -220,13 +223,12 @@ export default function ReportDetailPage() {
     </div>
   );
 
-  // New RequestList component specifically for client requests with a task-like design
-  const RequestList = ({ items }: { items: RequestItem[] }) => (
+  const ClientRequestList = ({ items }: { items: RequestItem[] }) => (
     <div className="flex flex-col space-y-2 sm:space-y-3 w-full">
       {(items || []).map((item, index) => (
         <div
           key={index}
-          className="border-l-4 border-red-500 rounded-md overflow-hidden bg-gradient-to-r from-red-900/10 to-neutral-900 shadow-md"
+          className="border-l-4 border-red-500  rounded-md overflow-hidden bg-gradient-to-r from-red-900/10 to-neutral-900 shadow-md"
         >
           <div className="flex justify-between items-center p-0.5">
             <div className="flex items-center flex-1">
@@ -237,21 +239,6 @@ export default function ReportDetailPage() {
                 </p>
               </div>
             </div>
-            {item.argancy && (
-              <div
-                className={`self-stretch flex items-center px-4 min-w-[90px] justify-center ${
-                  item.argancy === "high"
-                    ? "bg-red-900/40 text-red-300"
-                    : item.argancy === "medium"
-                    ? "bg-yellow-900/40 text-yellow-300"
-                    : "bg-green-900/40 text-green-300"
-                }`}
-              >
-                <span className="text-xs font-medium uppercase tracking-wider">
-                  {item.argancy}
-                </span>
-              </div>
-            )}
           </div>
         </div>
       ))}
@@ -445,11 +432,12 @@ export default function ReportDetailPage() {
           <div className="flex flex-col items-center sm:hidden w-full">
             <div className=" mb-3">
               <Image
-                src="/4wk.svg"
+                src="/4wk.png"
                 alt="4WK Logo"
-                width={48}
-                height={48}
-                className="rounded-md h-6 w-auto"
+                width={192}
+                height={24}
+                quality={100}
+                className="rounded-md"
               />
             </div>
             <h1 className="text-xl font-bold text-white text-center">
@@ -467,11 +455,12 @@ export default function ReportDetailPage() {
           <div className="hidden sm:flex sm:items-center">
             <div className="p-3 rounded-lg  mr-4">
               <Image
-                src="/4wk.svg"
+                src="/4wk.png"
                 alt="4WK Logo"
-                width={48}
-                height={48}
-                className="rounded-md h-8 w-auto"
+                width={192}
+                height={24}
+                quality={100}
+                className="rounded-md"
               />
             </div>
             <div>
@@ -575,6 +564,12 @@ export default function ReportDetailPage() {
                     </p>
                   </div>
                   <div>
+                    <p className="text-neutral-400 text-xs mb-1">Mileage</p>
+                    <p className="text-white font-medium text-sm">
+                      {safeAccess(report, "mileage", "") as string} km
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-neutral-400 text-xs mb-1">
                       Plate Number
                     </p>
@@ -593,14 +588,24 @@ export default function ReportDetailPage() {
             </div>
           </Section>
 
-          <Section title="Client Requests">
+          <Section title="Vehicle Notes">
             <div className="bg-neutral-900/30 rounded-lg p-5">
+              {(safeAccess(report, "clientNotesImages", []) as string[])
+                .length > 0 && (
+                <div>
+                  <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
+                    Vehicle Images
+                  </h3>
+                  <ImageGallery
+                    images={
+                      safeAccess(report, "clientNotesImages", []) as string[]
+                    }
+                  />
+                </div>
+              )}
               {safeAccess(report, "clientNotes", "") && (
                 <div className="mb-5">
-                  <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
-                    Client Notes
-                  </h3>
-                  <div className="bg-neutral-900 p-3 sm:p-4 rounded-md text-neutral-300 text-sm">
+                  <div className="bg-neutral-900 p-3 sm:p-4 rounded-md text-neutral-300 text-sm mt-2">
                     <p>{safeAccess(report, "clientNotes", "") as string}</p>
                   </div>
                 </div>
@@ -612,23 +617,9 @@ export default function ReportDetailPage() {
                   <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
                     Client Requests
                   </h3>
-                  <RequestList
+                  <ClientRequestList
                     items={
                       safeAccess(report, "clientRequests", []) as RequestItem[]
-                    }
-                  />
-                </div>
-              )}
-
-              {(safeAccess(report, "clientNotesImages", []) as string[])
-                .length > 0 && (
-                <div>
-                  <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
-                    Client Provided Images
-                  </h3>
-                  <ImageGallery
-                    images={
-                      safeAccess(report, "clientNotesImages", []) as string[]
                     }
                   />
                 </div>
@@ -641,9 +632,6 @@ export default function ReportDetailPage() {
               {(safeAccess(report, "inspectionFindings", []) as FindingItem[])
                 .length > 0 && (
                 <div className="mb-5">
-                  <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
-                    Issues Found
-                  </h3>
                   <FindingsList
                     items={
                       safeAccess(
@@ -658,9 +646,6 @@ export default function ReportDetailPage() {
 
               {safeAccess(report, "inspectionNotes", "") && (
                 <div className="mb-5">
-                  <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
-                    Technician Notes
-                  </h3>
                   <div className="bg-neutral-900 p-3 sm:p-4 rounded-md text-neutral-300 text-sm">
                     <p>{safeAccess(report, "inspectionNotes", "") as string}</p>
                   </div>
@@ -730,39 +715,14 @@ export default function ReportDetailPage() {
                       safeAccess(report, "testDriveImages", []) as string[]
                     }
                   />
-                </div>
-              )}
-            </div>
-          </Section>
 
-          <Section title="Conclusion">
-            <div className="bg-neutral-900/30 rounded-lg p-5">
-              {safeAccess(report, "recommendations", "") && (
-                <div className="mb-5">
-                  <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
-                    Recommendations
-                  </h3>
-                  <div className="bg-neutral-900 p-3 sm:p-4 rounded-md text-neutral-300 text-sm">
-                    <p>{safeAccess(report, "recommendations", "") as string}</p>
-                  </div>
-                </div>
-              )}
-
-              {safeAccess(report, "summary", "") && (
-                <div>
-                  <h3 className="text-white font-medium text-sm sm:text-base mb-3 border-b border-neutral-700 pb-2">
-                    Summary
-                  </h3>
-                  <div className="bg-neutral-900 p-3 sm:p-4 rounded-md text-neutral-300 text-sm">
-                    <p>{safeAccess(report, "summary", "") as string}</p>
+                  <div className="mt-10 flex flex-row justify-between">
+                    <div />
+                    <ClientFeedbackForm sessionId={sessionId} />
                   </div>
                 </div>
               )}
             </div>
-          </Section>
-
-          <Section title="Client Feedback">
-            <ClientFeedbackForm sessionId={sessionId} />
           </Section>
         </div>
       </div>

@@ -20,11 +20,12 @@ const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSubmit, error }) => {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <Image
-              src="/4wk.svg"
+              src="/4wk.png"
               alt="4WK Logo"
-              width={48}
-              height={48}
-              className="h-8 w-auto"
+              width={192}
+              height={24}
+              quality={100}
+              className="rounded-md mb-6"
             />
           </div>
           <h2 className="mt-2 text-2xl font-bold text-white">

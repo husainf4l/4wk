@@ -69,13 +69,19 @@ export interface ReportData {
   carId: string;
 }
 
+// Add an interface for the protected report response
+interface ProtectedReportResponse {
+  id: string;
+  passwordProtected: boolean;
+}
+
 /**
  * Fetch a report by its ID directly from the Firestore 'reports' collection
  * @param id - The document ID for the report
  * @param password - Optional password for protected reports
  * @returns Promise resolving to the report data or null if not found/unauthorized
  */
-export const getReportBySessionId = async (id: string, password?: string): Promise<ReportData | null> => {
+export const getReportBySessionId = async (id: string, password?: string): Promise<ReportData | ProtectedReportResponse | null> => {
   try {
     // Check if ID is valid
     if (!id || typeof id !== 'string') {
@@ -99,7 +105,7 @@ export const getReportBySessionId = async (id: string, password?: string): Promi
         return {
           id: docSnap.id,
           passwordProtected: true,
-        } as any; // Return minimal data with password protection flag
+        }; // Return minimal data with password protection flag
       }
       
       // Process timestamps to string format if needed

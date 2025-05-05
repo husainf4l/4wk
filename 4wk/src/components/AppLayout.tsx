@@ -76,10 +76,11 @@ export default function AppLayout({
         <div className="flex items-center gap-3">
           <Link href="/dashboard">
             <Image
-              src="/4wk.svg"
+              src="/4wk.png"
               alt="4WK Logo"
-              width={40}
-              height={40}
+              width={192}
+              height={24}
+              quality={100}
               className="rounded-md cursor-pointer"
             />
           </Link>
