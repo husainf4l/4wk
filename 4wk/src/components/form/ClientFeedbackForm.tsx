@@ -13,7 +13,7 @@ export default function ClientFeedbackForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { error, handleError } = useErrorHandler();
+  const { handleError } = useErrorHandler();
   const { showToast } = useToast();
 
   // Check localStorage on component mount to see if this form was already submitted
@@ -35,7 +35,7 @@ export default function ClientFeedbackForm({
   // Function to save submission status to localStorage
   const saveSubmissionStatus = () => {
     const submittedForms = localStorage.getItem("submittedFeedbackForms");
-    let forms = submittedForms ? JSON.parse(submittedForms) : [];
+    const forms = submittedForms ? JSON.parse(submittedForms) : [];
 
     if (!forms.includes(sessionId)) {
       forms.push(sessionId);
@@ -83,9 +83,10 @@ export default function ClientFeedbackForm({
           Your Response
         </h3>
         <p className="text-neutral-400 text-sm">
-          Take a look at the issues we've found so far. If you remember anything
-          else or have any extra notes -- even small things -- just let us know.
-          We're here to make sure everything's covered for you.
+          Take a look at the issues we&apos;ve found so far. If you remember
+          anything else or have any extra notes -- even small things -- just let
+          us know. We&apos;re here to make sure everything&apos;s covered for
+          you.
         </p>
       </div>
       <div className="mb-6">

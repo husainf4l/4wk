@@ -1,6 +1,7 @@
-import type { NextConfig } from "next";
+// filepath: /Users/al-husseinabdullah/Desktop/4wk/4wk/next.config.mjs
+/** @type {import('next').NextConfig} */
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   // Remove output: "export" to enable server-side rendering
   webpack: (config) => {
     config.resolve.fallback = {

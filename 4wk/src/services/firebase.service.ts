@@ -10,6 +10,9 @@ export interface ReportData {
   id: string;
   sessionId: string;
   
+  // Security
+  password?: string;  // 5-letter password for report access
+  
   // Timestamps
   createdAt: string;
   updatedAt: string;
@@ -69,9 +72,10 @@ export interface ReportData {
 /**
  * Fetch a report by its ID directly from the Firestore 'reports' collection
  * @param id - The document ID for the report
- * @returns Promise resolving to the report data or null if not found
+ * @param password - Optional password for protected reports
+ * @returns Promise resolving to the report data or null if not found/unauthorized
  */
-export const getReportBySessionId = async (id: string): Promise<ReportData | null> => {
+export const getReportBySessionId = async (id: string, password?: string): Promise<ReportData | null> => {
   try {
     // Check if ID is valid
     if (!id || typeof id !== 'string') {
@@ -88,6 +92,15 @@ export const getReportBySessionId = async (id: string): Promise<ReportData | nul
     // Check if document exists
     if (docSnap.exists()) {
       const data = docSnap.data();
+      
+      // Check if password protection is enabled and verify password
+      if (data.password && data.password !== password) {
+        console.log('Access denied: password required or incorrect');
+        return {
+          id: docSnap.id,
+          passwordProtected: true,
+        } as any; // Return minimal data with password protection flag
+      }
       
       // Process timestamps to string format if needed
       const createdAt = data.createdAt?.toDate?.() ? data.createdAt.toDate().toISOString() : data.createdAt;
@@ -196,5 +209,69 @@ export const updateReportFeedback = async (reportId: string, feedbackNotes: stri
   } catch (error) {
     console.error("Error in updateReportFeedback:", error);
     throw error;
+  }
+};
+
+/**
+ * Sets a 5-letter password for a report
+ * @param reportId The ID of the report to secure
+ * @param password The 5-letter password to protect the report
+ */
+export const setReportPassword = async (reportId: string, password: string): Promise<void> => {
+  try {
+    // Validate password format
+    if (!password || password.length !== 5) {
+      throw new Error("Password must be exactly 5 letters");
+    }
+    
+    console.log(`Setting password for report ${reportId}`);
+    
+    // Get the document reference
+    const reportRef = doc(db, "reports", reportId);
+    
+    // Update the document with the password and timestamp
+    await updateDoc(reportRef, {
+      password,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log(`Report ${reportId} successfully secured with password`);
+  } catch (error) {
+    console.error("Error in setReportPassword:", error);
+    throw error;
+  }
+};
+
+/**
+ * Verifies the password for a protected report
+ * @param reportId The ID of the report to access
+ * @param password The password attempt
+ * @returns Promise resolving to boolean indicating if access is allowed
+ */
+export const verifyReportPassword = async (reportId: string, password: string): Promise<boolean> => {
+  try {
+    // Get the document reference
+    const reportRef = doc(db, "reports", reportId);
+    
+    // Get the report
+    const docSnap = await getDoc(reportRef);
+    
+    if (!docSnap.exists()) {
+      console.error(`Report with ID ${reportId} not found`);
+      return false;
+    }
+    
+    const reportData = docSnap.data();
+    
+    // If no password is set on the report, don't require verification
+    if (!reportData.password) {
+      return true;
+    }
+    
+    // Compare the provided password with the stored password
+    return reportData.password === password;
+  } catch (error) {
+    console.error("Error in verifyReportPassword:", error);
+    return false;
   }
 };

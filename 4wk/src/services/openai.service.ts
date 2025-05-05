@@ -43,6 +43,31 @@ interface ReportDataInput {
 }
 
 /**
+ * Interface for chat messages
+ */
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Interface for chatbot response
+ */
+export interface ChatbotResponse {
+  reply: string;
+  databaseInfo?: DatabaseInfo;
+  error?: string;
+}
+
+/**
+ * Interface for database information returned from queries
+ */
+interface DatabaseInfo {
+  type?: string;
+  [key: string]: unknown;
+}
+
+/**
  * Generates professional recommendations based on inspection data
  * @param reportData The report data to base recommendations on
  * @returns A professional recommendation text
@@ -77,7 +102,7 @@ export const generateRecommendations = async (reportData: ReportDataInput): Prom
     
     return recommendationText || FALLBACK_RECOMMENDATION;
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error generating recommendations:", error);
     return FALLBACK_RECOMMENDATION;
   }
@@ -118,11 +143,119 @@ export const generateSummary = async (reportData: ReportDataInput): Promise<stri
     
     return summaryText || FALLBACK_SUMMARY;
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error generating summary:", error);
     return FALLBACK_SUMMARY;
   }
 };
+
+/**
+ * Process a chat message with the AI and provide a response
+ * Optionally includes database information if requested in the message
+ * 
+ * @param messages Previous chat messages for context
+ * @param newMessage New message from the user
+ * @param dbData Optional database data that can be accessed by the chatbot
+ * @returns Chatbot response with reply text and optional database info
+ */
+export const processChatMessage = async (
+  messages: ChatMessage[], 
+  newMessage: string,
+  dbData?: DatabaseInfo | Record<string, unknown>[] | null
+): Promise<ChatbotResponse> => {
+  // If OpenAI is not initialized, return error
+  if (!openai || !OPENAI_API_KEY) {
+    console.log('OpenAI is not available for chat');
+    return { 
+      reply: "Sorry, the AI service is currently unavailable. Please try again later.",
+      error: "OpenAI service not initialized"
+    };
+  }
+
+  try {
+    // Create a system message that explains the chatbot's capabilities
+    const systemMessage: ChatMessage = {
+      role: 'system',
+      content: `You are an automotive service assistant for 4WK, helping with vehicle repair and maintenance questions.
+      
+You have access to the following data if needed:
+- Vehicle reports and diagnostics
+- Client information
+- Maintenance records
+
+Provide helpful, accurate information about vehicle maintenance, repair processes, and interpreting diagnostic reports.
+Be professional but conversational. If you don't know something specific, acknowledge it and provide general guidance.
+If the user asks about specific database information, you can include it in your response.`
+    };
+
+    // Create updated message history including the new message
+    const updatedMessages: ChatMessage[] = [
+      systemMessage,
+      ...messages.slice(-10), // Keep only the last 10 messages for context
+      { role: 'user', content: newMessage }
+    ];
+
+    // Check if this is a request for database information
+    const isDbRequest = checkForDatabaseRequest(newMessage);
+
+    // Prepare database context if requested
+    if (isDbRequest && dbData) {
+      // Add context about the available database information
+      updatedMessages.push({
+        role: 'system',
+        content: `The following database information is available to answer this query:\n${JSON.stringify(dbData, null, 2)}`
+      });
+    }
+
+    console.log('Sending chat messages to OpenAI:', updatedMessages);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",  // Using a more advanced model for better conversation
+      messages: updatedMessages,
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    const reply = response.choices[0]?.message?.content?.trim() || "I'm sorry, I couldn't generate a response.";
+    
+    return {
+      reply,
+      databaseInfo: dbData as DatabaseInfo
+    };
+
+  } catch (error: unknown) {
+    console.error("Error processing chat message:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return { 
+      reply: "Sorry, I encountered an error while processing your message. Please try again.",
+      error: errorMessage
+    };
+  }
+};
+
+/**
+ * Checks if the user message is requesting database information
+ */
+function checkForDatabaseRequest(message: string): boolean {
+  const dbKeywords = [
+    'database', 'record', 'client', 'vehicle', 'car', 'report', 'history',
+    'maintenance', 'repair', 'service', 'data', 'information', 'lookup',
+    'find', 'search', 'get', 'show', 'display'
+  ];
+  
+  const questionIndicators = ['?', 'what', 'who', 'when', 'where', 'how', 'which', 'can you'];
+  
+  const lowercaseMsg = message.toLowerCase();
+  
+  // Check for database keywords
+  const hasDbKeyword = dbKeywords.some(keyword => lowercaseMsg.includes(keyword));
+  
+  // Check for question indicators
+  const isQuestion = questionIndicators.some(indicator => lowercaseMsg.includes(indicator));
+  
+  // If the message contains both a database keyword and is a question, it's likely requesting database info
+  return hasDbKeyword && isQuestion;
+}
 
 /**
  * Creates a structured prompt for the recommendation generation
