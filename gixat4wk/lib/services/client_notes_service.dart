@@ -25,6 +25,7 @@ class ClientNotesService {
     required String notes,
     required List<Map<String, dynamic>> requests,
     required List<String> images,
+    String? mileage,
   }) async {
     try {
       // Filter out any invalid image URLs (ensure they're all valid URLs)
@@ -44,6 +45,11 @@ class ClientNotesService {
         'type': 'clientNotes',
         'timestamp': FieldValue.serverTimestamp(),
       };
+
+      // Add mileage if provided
+      if (mileage != null && mileage.isNotEmpty) {
+        clientNoteData['mileage'] = mileage;
+      }
 
       // Add document to Firestore
       final DocumentReference docRef = await _jobCardCollection.add(
@@ -105,6 +111,7 @@ class ClientNotesService {
     required String notes,
     required List<Map<String, dynamic>> requests,
     List<String>? images,
+    String? mileage,
   }) async {
     try {
       final updateData = {
@@ -112,6 +119,11 @@ class ClientNotesService {
         'requests': requests,
         'updatedAt': FieldValue.serverTimestamp(),
       };
+
+      // Include mileage in the update if provided
+      if (mileage != null) {
+        updateData['mileage'] = mileage;
+      }
 
       if (images != null && images.isNotEmpty) {
         // Create a fresh copy of the images list with only valid URLs

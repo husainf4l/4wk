@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
+import 'dart:math';
 import '../../models/session.dart';
 import '../../services/report_service.dart';
 import '../../widgets/detail_screen_header.dart';
@@ -14,10 +16,7 @@ import '../../widgets/report/info_widgets.dart';
 import '../../widgets/report/report_section_widget.dart';
 
 class ReportDetailsScreen extends StatefulWidget {
-  // Required parameter - only need sessionId
   final String sessionId;
-
-  // Optional parameter - reportId
   final String? reportId;
 
   const ReportDetailsScreen({
@@ -46,9 +45,22 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   bool _isEditing = false;
   bool _isGeneratingAI = false;
   String? _errorMessage;
+  String _reportPassword = ''; // Password for report access
 
   // Session data
   Session? _session;
+
+  // Generate a random 5-letter password
+  String _generateRandomPassword() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    final random = Random();
+    return String.fromCharCodes(
+      Iterable.generate(
+        5,
+        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
+      ),
+    );
+  }
 
   // Client and car info
   String _clientName = 'Loading...';
@@ -72,6 +84,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   // Client and car info
   Map<String, dynamic> _clientData = {};
   Map<String, dynamic> _carData = {};
+
+  // Mileage information
+  String? _mileage;
 
   @override
   void initState() {
@@ -224,6 +239,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
             _recommendationsController.text =
                 reportData['recommendations'] ?? '';
 
+            // Load password from the report
+            _reportPassword = reportData['password'] ?? '';
+
             // Set other report fields
             _clientNotes = reportData['clientNotes'];
             _inspectionNotes = reportData['inspectionNotes'];
@@ -288,6 +306,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
     if (clientNotesData != null) {
       setState(() {
         _clientNotes = clientNotesData['notes'];
+
+        // Load mileage from client notes if available
+        if (clientNotesData['mileage'] != null) {
+          _mileage = clientNotesData['mileage'];
+        }
+
         if (clientNotesData['requests'] != null) {
           _clientRequests = List<Map<String, dynamic>>.from(
             clientNotesData['requests'],
@@ -429,6 +453,11 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       (_clientData['address'] as Map<String, dynamic>)['country'] =
           _clientCountryController.text;
 
+      // If creating a new report, generate a random password
+      if (widget.reportId == null) {
+        _reportPassword = _generateRandomPassword();
+      }
+
       // Create report data
       final Map<String, dynamic> reportData = {
         'summary': _summaryController.text,
@@ -442,6 +471,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
         'clientNotesImages': _clientNotesImages,
         'inspectionImages': _inspectionImages,
         'testDriveImages': _testDriveImages,
+        'password': _reportPassword, // Add the password to the report data
+        'mileage': _mileage, // Include mileage in the report data
       };
 
       String reportId = widget.reportId ?? '';
@@ -1064,40 +1095,117 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       return;
     }
 
-    // Format the message text
+    // Format the message text, including the password
     String messageText =
-        'You can find your initial car report at this link 4wk.ae/report/${widget.reportId}';
+        'You can find your initial car report at this link 4wk.ae/report/${widget.reportId}\n\nYour password is: $_reportPassword';
 
     // Format the phone number - remove any non-digit characters
     String formattedPhone = clientPhone.replaceAll(RegExp(r'\D'), '');
 
-    // Make sure the phone number starts with a country code (default to UAE +971)
+    // Copy message to clipboard for easier sharing
+    await Clipboard.setData(ClipboardData(text: messageText));
 
-    // Create the WhatsApp URL
-    final whatsappUrl = Uri.parse(
-      'https://wa.me/$formattedPhone?text=${Uri.encodeComponent(messageText)}',
-    );
+    debugPrint("Sharing to WhatsApp: $formattedPhone");
+    debugPrint("Message: $messageText");
 
-    // Try to launch WhatsApp
     try {
-      if (await canLaunchUrl(whatsappUrl)) {
-        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      // Encode the message text properly for URLs
+      String encodedMessage = Uri.encodeComponent(messageText);
+
+      // Try different URL formats that include the message parameter
+      List<Uri> uriToTry = [
+        // Intent URI with both phone and text (works on many Android devices)
+        Uri.parse("whatsapp://send?phone=$formattedPhone&text=$encodedMessage"),
+
+        // Web URL with both phone and text
+        Uri.parse("https://wa.me/$formattedPhone?text=$encodedMessage"),
+
+        // API URL with both phone and text
+        Uri.parse(
+          "https://api.whatsapp.com/send?phone=$formattedPhone&text=$encodedMessage",
+        ),
+      ];
+
+      bool launched = false;
+      String attemptsLog = "";
+
+      // Try each URI in sequence until one works
+      for (var i = 0; i < uriToTry.length; i++) {
+        Uri uri = uriToTry[i];
+        attemptsLog += "Attempt ${i + 1}: ${uri.toString()}\n";
+
+        if (await canLaunchUrl(uri)) {
+          debugPrint("Trying to launch: ${uri.toString()}");
+          launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+          if (launched) {
+            debugPrint("Successfully launched: ${uri.toString()}");
+            break;
+          }
+        }
+      }
+
+      // If we couldn't launch with the message parameter, try just opening WhatsApp with the phone number
+      if (!launched) {
+        debugPrint(
+          "All attempts with message parameter failed. Trying just the phone number.",
+        );
+        Uri basicUri = Uri.parse("whatsapp://send?phone=$formattedPhone");
+
+        if (await canLaunchUrl(basicUri)) {
+          launched = await launchUrl(basicUri);
+        }
+      }
+
+      if (launched) {
+        Get.snackbar(
+          'WhatsApp Opened',
+          'If the message is not pre-filled, it has been copied to your clipboard - just paste it in the chat.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 7),
+        );
       } else {
+        // Log all our attempts for debugging
+        debugPrint("Failed to launch WhatsApp. Attempted URLs:\n$attemptsLog");
+
         Get.snackbar(
           'Error',
-          'Could not launch WhatsApp. Please make sure WhatsApp is installed.',
+          'Could not open WhatsApp. Make sure WhatsApp is installed.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to open WhatsApp: ${e.toString()}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      debugPrint('Error launching WhatsApp: $e');
+
+      // Show error message but also help the user manually share
+      Get.dialog(
+        AlertDialog(
+          title: const Text('WhatsApp Not Available'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Could not open WhatsApp automatically (Error: ${e.toString().split('\n').first})',
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'The report link and password have been copied to your clipboard. You can manually:',
+              ),
+              const SizedBox(height: 8),
+              const Text('1. Open WhatsApp'),
+              const Text('2. Find the client contact'),
+              const Text('3. Paste the message'),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Get.back(), child: const Text('OK')),
+          ],
+        ),
       );
     }
   }
@@ -1448,6 +1556,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           if (_carData['vin'] != null) ...[
             const SizedBox(height: 8),
             InfoRow(label: 'VIN', value: _carData['vin']),
+          ],
+          if (_mileage != null && _mileage!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            InfoRow(label: 'Mileage', value: '$_mileage km'),
           ],
         ],
       ),

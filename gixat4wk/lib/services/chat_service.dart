@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -28,7 +29,7 @@ class ChatService extends GetxService {
   final http.Client _client = http.Client();
 
   ChatService({String? baseUrl})
-      : _baseUrl = baseUrl ?? 'http://192.168.0.156:3000';
+    : _baseUrl = baseUrl ?? 'http://192.168.0.156:3000';
 
   // Initialize the service
   Future<ChatService> init() async {
@@ -57,13 +58,17 @@ class ChatService extends GetxService {
   Future<void> _validateApiEndpoint() async {
     try {
       debugPrint('Validating API endpoint: $_baseUrl/api/ai/chatbot');
-      final testRequest = await _client.get(
-        Uri.parse('$_baseUrl/api/ai'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 5));
+      final testRequest = await _client
+          .get(
+            Uri.parse('$_baseUrl/api/ai'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (testRequest.statusCode >= 400) {
-        debugPrint('API endpoint validation failed with status: ${testRequest.statusCode}');
+        debugPrint(
+          'API endpoint validation failed with status: ${testRequest.statusCode}',
+        );
         // If production URL fails, try fallback to development
         if (_baseUrl.contains('4wk.ae')) {
           _baseUrl = 'http://192.168.0.156:3000';
@@ -122,56 +127,100 @@ class ChatService extends GetxService {
       // Prepare request payload
       final payload = jsonEncode({
         'sessionId': currentSessionId,
-        'message': message
+        'message': message,
       });
 
       debugPrint('Sending request to: $_baseUrl/api/ai/chatbot');
       debugPrint('Payload: $payload');
 
       // Call API with longer timeout
-      final response = await _client.post(
-        Uri.parse('$_baseUrl/api/ai/chatbot'),
-        headers: {'Content-Type': 'application/json'},
-        body: payload,
-      ).timeout(const Duration(seconds: 30));
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/api/ai/chatbot'),
+            headers: {'Content-Type': 'application/json'},
+            body: payload,
+          )
+          .timeout(const Duration(seconds: 30));
 
       debugPrint('Response status: ${response.statusCode}');
       debugPrint('Response body: ${response.body}');
 
-      if (response.statusCode >= 200 && response.statusCode < 300 && response.body.isNotEmpty) {
+      if (response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          response.body.isNotEmpty) {
         try {
           final responseData = jsonDecode(response.body);
-          final botResponse = responseData['response'] as String?;
+          debugPrint('Parsed response data: $responseData');
 
-          if (botResponse != null && botResponse.isNotEmpty) {
-            final botMessage = ChatMessage(
-              id: uuid.v4(),
-              text: botResponse,
-              timestamp: DateTime.now(),
-              isUserMessage: false,
-              sessionId: currentSessionId,
-            );
+          // Extract the bot's response text
+          String? botResponseText;
 
-            // Add bot message to list
-            messages.add(botMessage);
+          // Check for 'reply' field in response
+          if (responseData.containsKey('reply')) {
+            botResponseText = responseData['reply'] as String?;
+            debugPrint('Found reply in response: $botResponseText');
 
-            // Save messages after adding bot response
-            await _saveMessages(currentSessionId);
-
-            // Update session with latest message
-            _updateSessionWithLatestMessage(
-              currentSessionId,
-              botMessage.text,
-              botMessage.timestamp,
-            );
-
-            return botMessage;
-          } else {
-            throw Exception('Empty or invalid response from AI');
+            // Check for database info
+            if (responseData.containsKey('databaseInfo')) {}
           }
+          // Fallback to 'response' field (original format)
+          else if (responseData.containsKey('response')) {
+            botResponseText = responseData['response'] as String?;
+            debugPrint('Found response in response: $botResponseText');
+          }
+          // Try to extract from messages array if available
+          else if (responseData.containsKey('messages') &&
+              responseData['messages'] is List) {
+            final msgList = responseData['messages'] as List;
+            for (final msg in msgList) {
+              if (msg is Map &&
+                  msg.containsKey('role') &&
+                  msg['role'] == 'assistant' &&
+                  msg.containsKey('content')) {
+                botResponseText = msg['content'] as String?;
+                debugPrint('Found assistant message: $botResponseText');
+                break;
+              }
+            }
+          }
+
+          if (botResponseText == null || botResponseText.isEmpty) {
+            throw Exception(
+              'Could not find a valid response in the API result: $responseData',
+            );
+          }
+
+          // Create and add bot message
+          final botMessage = ChatMessage(
+            id: uuid.v4(),
+            text: botResponseText,
+            timestamp: DateTime.now(),
+            isUserMessage: false,
+            sessionId: currentSessionId,
+            // Adding databaseInfo only if it's actually available
+            databaseInfo:
+                responseData.containsKey('databaseInfo')
+                    ? responseData['databaseInfo'] as Map<String, dynamic>?
+                    : null,
+          );
+
+          // Add bot message to list
+          messages.add(botMessage);
+
+          // Save messages after adding bot response
+          await _saveMessages(currentSessionId);
+
+          // Update session with latest message
+          _updateSessionWithLatestMessage(
+            currentSessionId,
+            botMessage.text,
+            botMessage.timestamp,
+          );
+
+          return botMessage;
         } catch (e) {
           debugPrint('Error parsing response: $e');
-          throw e;
+          rethrow;
         }
       } else {
         // Handle error response
@@ -187,13 +236,17 @@ class ChatService extends GetxService {
       // Determine appropriate error message based on exception type
       String errorMessage;
       if (e is SocketException || e is http.ClientException) {
-        errorMessage = 'Network connection error. Please check your internet connection and try again.';
+        errorMessage =
+            'Network connection error. Please check your internet connection and try again.';
       } else if (e is TimeoutException) {
-        errorMessage = 'Request timed out. The server might be busy, please try again later.';
+        errorMessage =
+            'Request timed out. The server might be busy, please try again later.';
       } else if (e is FormatException) {
-        errorMessage = 'Couldn\'t process the response from the server. Please try again.';
+        errorMessage =
+            'Couldn\'t process the response from the server. Please try again.';
       } else {
-        errorMessage = 'Sorry, there was an error processing your request. Please try again.';
+        errorMessage =
+            'Sorry, there was an error processing your request. Please try again.';
       }
 
       // Add error message to chat

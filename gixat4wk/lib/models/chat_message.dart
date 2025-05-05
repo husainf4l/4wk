@@ -4,6 +4,8 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isUserMessage;
   final String sessionId;
+  final Map<String, dynamic>?
+  databaseInfo; // Added to store associated vehicle/client data
 
   ChatMessage({
     required this.id,
@@ -11,6 +13,7 @@ class ChatMessage {
     required this.timestamp,
     required this.isUserMessage,
     required this.sessionId,
+    this.databaseInfo,
   });
 
   // Convert to map for storage
@@ -21,6 +24,7 @@ class ChatMessage {
       'timestamp': timestamp.millisecondsSinceEpoch,
       'isUserMessage': isUserMessage,
       'sessionId': sessionId,
+      'databaseInfo': databaseInfo,
     };
   }
 
@@ -34,6 +38,10 @@ class ChatMessage {
       ),
       isUserMessage: map['isUserMessage'] ?? false,
       sessionId: map['sessionId'] ?? '',
+      databaseInfo:
+          map['databaseInfo'] != null
+              ? Map<String, dynamic>.from(map['databaseInfo'])
+              : null,
     );
   }
 }

@@ -46,6 +46,8 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
   final ImageHandlingService _imageHandlingService = ImageHandlingService();
   final TextEditingController _customRequestController =
       TextEditingController();
+  final TextEditingController _mileageController =
+      TextEditingController(); // Add controller for mileage
 
   String? _notes;
   List<Map<String, dynamic>> _requests = [];
@@ -110,6 +112,11 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
             // Load existing image URLs
             if (data['images'] != null) {
               _uploadedImageUrls = List<String>.from(data['images']);
+            }
+
+            // Load mileage if available
+            if (data['mileage'] != null) {
+              _mileageController.text = data['mileage'];
             }
           });
         }
@@ -231,6 +238,9 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
 
       String? clientNotesId = widget.clientNotesId;
 
+      // Get mileage value from controller
+      final mileage = _mileageController.text.trim();
+
       if (clientNotesId != null) {
         // Update existing client notes
         await _clientNotesService.updateClientNote(
@@ -238,6 +248,10 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
           notes: _notes ?? '',
           requests: _requests,
           images: _uploadedImageUrls,
+          mileage:
+              mileage.isNotEmpty
+                  ? mileage
+                  : null, // Include mileage if available
         );
       } else {
         // Create new client notes
@@ -248,6 +262,10 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
           notes: _notes ?? '',
           requests: _requests,
           images: _uploadedImageUrls,
+          mileage:
+              mileage.isNotEmpty
+                  ? mileage
+                  : null, // Include mileage if available
         );
 
         // Update session with the new client notes ID directly
@@ -440,6 +458,71 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Mileage input field
+                      Text(
+                        'Vehicle Mileage',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: Colors.black12,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.primaryColor.withAlpha(51),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.primaryColor.withAlpha(26),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.speed,
+                                color: theme.primaryColor,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child:
+                                  _isEditing
+                                      ? TextField(
+                                        controller: _mileageController,
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          hintText: 'Enter vehicle mileage',
+                                          border: InputBorder.none,
+                                        ),
+                                      )
+                                      : Text(
+                                        _mileageController.text.isNotEmpty
+                                            ? '${_mileageController.text} km'
+                                            : 'Mileage not recorded',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w500,
+                                              color:
+                                                  _mileageController
+                                                          .text
+                                                          .isNotEmpty
+                                                      ? Colors.white
+                                                      : Colors.grey,
+                                            ),
+                                      ),
                             ),
                           ],
                         ),

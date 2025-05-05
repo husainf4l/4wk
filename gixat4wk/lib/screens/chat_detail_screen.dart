@@ -26,12 +26,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Schedule session selection for after the build is complete
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _chatService.selectSession(widget.sessionId);
     });
-    
+
     // Scroll to bottom whenever messages change
     ever(_chatService.messages, (_) {
       _scrollToBottom();

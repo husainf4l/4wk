@@ -55,9 +55,43 @@ class _ClientDetailsScreenState extends State<ClientDetailsScreen> {
     // Format the phone number - remove any non-digit characters
     String formattedPhone = phoneNumber.replaceAll(RegExp(r'\D'), '');
 
-    final Uri whatsappUri = Uri.parse('https://wa.me/$formattedPhone');
     try {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+      // Try different approaches for different platforms
+
+      // First approach - standard wa.me URL
+      final whatsappUrl = Uri.parse('https://wa.me/$formattedPhone');
+
+      bool launched = false;
+
+      // Try standard approach first
+      if (await canLaunchUrl(whatsappUrl)) {
+        launched = await launchUrl(
+          whatsappUrl,
+          mode: LaunchMode.externalApplication,
+        );
+      }
+
+      // If standard approach failed, try direct intent on Android
+      if (!launched) {
+        // Package URL for WhatsApp (works better on some Android devices)
+        Uri whatsappIntentUrl = Uri.parse(
+          "whatsapp://send?phone=$formattedPhone",
+        );
+
+        if (await canLaunchUrl(whatsappIntentUrl)) {
+          launched = await launchUrl(whatsappIntentUrl);
+        }
+      }
+
+      if (!launched) {
+        Get.snackbar(
+          'Error',
+          'Could not open WhatsApp. Make sure WhatsApp is installed.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
     } catch (e) {
       debugPrint('Could not launch WhatsApp: $e');
       Get.snackbar(

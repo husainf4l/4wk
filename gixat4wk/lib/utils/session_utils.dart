@@ -12,7 +12,7 @@ class SessionUtils {
         return Colors.purple;
       case 'TESTED':
         return Colors.blue;
-      case 'PRICING':
+      case 'JOB_ORDER':
         return Colors.teal;
       case 'REPORTED':
         return Colors.indigo;
@@ -34,8 +34,8 @@ class SessionUtils {
         return 'Inspected';
       case 'TESTED':
         return 'Tested';
-      case 'PRICING':
-        return 'Pricing';
+      case 'JOB_ORDER':
+        return 'Job Created';
       case 'REPORTED':
         return 'Reported';
       case 'CLOSED':
@@ -58,7 +58,7 @@ class SessionUtils {
         return Icons.directions_car;
       case 'PRICING':
         return Icons.attach_money;
-      case 'REPORTED':
+      case 'JOB_ORDER':
         return Icons.summarize;
       case 'COMPLETED':
         return Icons.task_alt;

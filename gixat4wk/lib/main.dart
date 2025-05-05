@@ -11,6 +11,7 @@ import 'services/database_service.dart';
 import 'services/error_service.dart'; // Import the new error service
 import 'services/image_handling_service.dart'; // Import ImageHandlingService
 import 'services/chat_service.dart'; // Import ChatService
+import 'services/session_service.dart'; // Import SessionService
 
 void main() async {
   // Ensure Flutter is initialized
@@ -36,6 +37,9 @@ void main() async {
 
     // Register ImageHandlingService
     Get.put(ImageHandlingService());
+
+    // Register SessionService
+    Get.put(SessionService());
 
     // Register ChatService
     await Get.putAsync(() => ChatService().init());

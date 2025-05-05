@@ -11,7 +11,7 @@ plugins {
 android {
     namespace = "ae.u4wk.gixat4wk"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973" // Updated NDK version for compatibility with plugins
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -27,7 +27,7 @@ android {
         applicationId = "ae.u4wk.gixat4wk"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23 // Increased minimum SDK version for Firebase Auth
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

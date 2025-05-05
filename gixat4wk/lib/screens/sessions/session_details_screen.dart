@@ -8,6 +8,7 @@ import 'client_notes_details_screen.dart';
 import 'inspection_details_screen.dart';
 import 'test_drive_details_screen.dart';
 import 'report_details_screen.dart';
+import 'job_order_screen.dart';
 
 class SessionDetailsScreen extends StatelessWidget {
   final Session session;
@@ -29,392 +30,481 @@ class SessionDetailsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Elegant header with car details
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(20),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Back button with minimal design
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Elegant header with car details
+              Container(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(20),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Back button with minimal design
 
-                      // Session status indicator
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: SessionUtils.getStatusColor(
-                            session.status,
-                          ).withAlpha(38),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          SessionUtils.formatStatus(session.status),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: SessionUtils.getStatusColor(session.status),
+                        // Session status indicator
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
                           ),
-                        ),
-                      ),
-
-                      GestureDetector(
-                        onTap: () => Get.off(() => MainNavigationScreen()),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.black12,
-                            borderRadius: BorderRadius.circular(12),
+                            color: SessionUtils.getStatusColor(
+                              session.status,
+                            ).withAlpha(38),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Icon(
-                            Icons.close,
-                            size: 18,
-                            color: Colors.white,
+                          child: Text(
+                            SessionUtils.formatStatus(session.status),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: SessionUtils.getStatusColor(
+                                session.status,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Car details display
-                  Text(
-                    carTitle,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 0.4,
+
+                        GestureDetector(
+                          onTap: () => Get.off(() => MainNavigationScreen()),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black12,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  // Client name
-                  Text(
-                    'Client: ${session.client['name'] ?? 'Unknown'}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[400],
-                      letterSpacing: 0.2,
+                    const SizedBox(height: 20),
+                    // Car details display
+                    Text(
+                      carTitle,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.4,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Session Activities',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
+                    // Client name
+                    Text(
+                      'Client: ${session.client['name'] ?? 'Unknown'}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[400],
+                        letterSpacing: 0.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SessionBox(
-                          icon: Icons.sticky_note_2_outlined,
-                          title: 'Client Notes',
-                          color: primaryColor,
-                          hasData: session.clientNoteId != null,
-                          onTap: () {
-                            // Navigate to the client notes details screen
-                            final carMake = session.car['make'] ?? '';
-                            final carModel = session.car['model'] ?? '';
-                            final plateNumber =
-                                session.car['plateNumber'] ?? '';
-                            final carDetails =
-                                '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
-
-                            // Navigate directly with or without existing clientNoteId
-                            Get.to(
-                              () => ClientNotesDetailsScreen(
-                                session: session,
-                                clientNotesId: session.clientNoteId,
-                                clientName: session.client['name'] ?? 'Unknown',
-                                carDetails: carDetails,
-                              ),
-                              transition: Transition.rightToLeft,
-                            )?.then((result) {
-                              if (result != null && result['refresh'] == true) {
-                                // Refresh session data
-                                FirebaseFirestore.instance
-                                    .collection('sessions')
-                                    .doc(session.id)
-                                    .get()
-                                    .then((snapshot) {
-                                      if (snapshot.exists &&
-                                          snapshot.data() != null) {
-                                        // Refresh UI by returning to previous screen with updated data
-                                        Get.back(result: {'refresh': true});
-                                      }
-                                    });
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _SessionBox(
-                          icon: Icons.search,
-                          title: 'Inspection',
-                          color: primaryColor,
-                          hasData: session.inspectionId != null,
-                          onTap: () {
-                            // Navigate to the inspection details screen
-                            final carMake = session.car['make'] ?? '';
-                            final carModel = session.car['model'] ?? '';
-                            final plateNumber =
-                                session.car['plateNumber'] ?? '';
-                            final carDetails =
-                                '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
-
-                            // Navigate directly with or without existing inspectionId
-                            Get.to(
-                              () => InspectionDetailsScreen(
-                                session: session,
-                                inspectionId: session.inspectionId,
-                                clientName: session.client['name'] ?? 'Unknown',
-                                carDetails: carDetails,
-                              ),
-                              transition: Transition.rightToLeft,
-                            )?.then((result) {
-                              if (result != null && result['refresh'] == true) {
-                                // Refresh session data
-                                FirebaseFirestore.instance
-                                    .collection('sessions')
-                                    .doc(session.id)
-                                    .get()
-                                    .then((snapshot) {
-                                      if (snapshot.exists &&
-                                          snapshot.data() != null) {
-                                        // Refresh UI by returning to previous screen with updated data
-                                        Get.back(result: {'refresh': true});
-                                      }
-                                    });
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SessionBox(
-                          icon: Icons.directions_car,
-                          title: 'Test Drive',
-                          color: primaryColor,
-                          hasData: session.testDriveId != null,
-                          onTap: () {
-                            // Navigate to the test drive details screen
-                            final carMake = session.car['make'] ?? '';
-                            final carModel = session.car['model'] ?? '';
-                            final plateNumber =
-                                session.car['plateNumber'] ?? '';
-                            final carDetails =
-                                '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
-
-                            // Navigate directly with or without existing testDriveId
-                            Get.to(
-                              () => TestDriveDetailsScreen(
-                                session: session,
-                                testDriveId: session.testDriveId,
-                                clientName: session.client['name'] ?? 'Unknown',
-                                carDetails: carDetails,
-                              ),
-                              transition: Transition.rightToLeft,
-                            )?.then((result) {
-                              if (result != null && result['refresh'] == true) {
-                                // Refresh session data
-                                FirebaseFirestore.instance
-                                    .collection('sessions')
-                                    .doc(session.id)
-                                    .get()
-                                    .then((snapshot) {
-                                      if (snapshot.exists &&
-                                          snapshot.data() != null) {
-                                        // Refresh UI by returning to previous screen with updated data
-                                        Get.back(result: {'refresh': true});
-                                      }
-                                    });
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _SessionBox(
-                          icon: Icons.directions_car,
-                          title: 'G Report',
-                          color: primaryColor,
-                          hasData: session.reportId != null,
-                          onTap: () {
-                            // Navigate directly with only session ID - G Report page will fetch all needed data
-                            Get.to(
-                              () => ReportDetailsScreen(
-                                sessionId: session.id,
-                                reportId: session.reportId,
-                              ),
-                              transition: Transition.rightToLeft,
-                            )?.then((result) {
-                              if (result != null && result['refresh'] == true) {
-                                // Refresh session data
-                                FirebaseFirestore.instance
-                                    .collection('sessions')
-                                    .doc(session.id)
-                                    .get()
-                                    .then((snapshot) {
-                                      if (snapshot.exists &&
-                                          snapshot.data() != null) {
-                                        // Refresh UI by returning to previous screen with updated data
-                                        Get.back(result: {'refresh': true});
-                                      }
-                                    });
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Activity history section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Text(
-                'Activity History',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.2,
+                  ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 16),
-
-            // Activity feed
-            Expanded(
-              child: StreamBuilder(
-                stream:
-                    FirebaseFirestore.instance
-                        .collection('activity')
-                        .where('sessionId', isEqualTo: session.id)
-                        .orderBy('timestamp', descending: true)
-                        .snapshots(),
-                builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                        strokeWidth: 2,
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 20.0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Session Activities',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
                       ),
-                    );
-                  }
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SessionBox(
+                            icon: Icons.sticky_note_2_outlined,
+                            title: 'Client Notes',
+                            color: primaryColor,
+                            hasData: session.clientNoteId != null,
+                            onTap: () {
+                              // Navigate to the client notes details screen
+                              final carMake = session.car['make'] ?? '';
+                              final carModel = session.car['model'] ?? '';
+                              final plateNumber =
+                                  session.car['plateNumber'] ?? '';
+                              final carDetails =
+                                  '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
 
-                  if (snapshot.hasError) {
-                    final errorMessage =
-                        snapshot.error.toString(); // Extract error details
-                    debugPrint(
-                      'Error loading activities: $errorMessage',
-                    ); // Log the error
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Error loading activities',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: Colors.red[400],
-                            ),
+                              // Navigate directly with or without existing clientNoteId
+                              Get.to(
+                                () => ClientNotesDetailsScreen(
+                                  session: session,
+                                  clientNotesId: session.clientNoteId,
+                                  clientName:
+                                      session.client['name'] ?? 'Unknown',
+                                  carDetails: carDetails,
+                                ),
+                                transition: Transition.rightToLeft,
+                              )?.then((result) {
+                                if (result != null &&
+                                    result['refresh'] == true) {
+                                  // Refresh session data
+                                  FirebaseFirestore.instance
+                                      .collection('sessions')
+                                      .doc(session.id)
+                                      .get()
+                                      .then((snapshot) {
+                                        if (snapshot.exists &&
+                                            snapshot.data() != null) {
+                                          // Refresh UI by returning to previous screen with updated data
+                                          Get.back(result: {'refresh': true});
+                                        }
+                                      });
+                                }
+                              });
+                            },
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            errorMessage, // Display the error message
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[500],
-                            ),
-                            textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _SessionBox(
+                            icon: Icons.search,
+                            title: 'Inspection',
+                            color: primaryColor,
+                            hasData: session.inspectionId != null,
+                            onTap: () {
+                              // Navigate to the inspection details screen
+                              final carMake = session.car['make'] ?? '';
+                              final carModel = session.car['model'] ?? '';
+                              final plateNumber =
+                                  session.car['plateNumber'] ?? '';
+                              final carDetails =
+                                  '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
+
+                              // Navigate directly with or without existing inspectionId
+                              Get.to(
+                                () => InspectionDetailsScreen(
+                                  session: session,
+                                  inspectionId: session.inspectionId,
+                                  clientName:
+                                      session.client['name'] ?? 'Unknown',
+                                  carDetails: carDetails,
+                                ),
+                                transition: Transition.rightToLeft,
+                              )?.then((result) {
+                                if (result != null &&
+                                    result['refresh'] == true) {
+                                  // Refresh session data
+                                  FirebaseFirestore.instance
+                                      .collection('sessions')
+                                      .doc(session.id)
+                                      .get()
+                                      .then((snapshot) {
+                                        if (snapshot.exists &&
+                                            snapshot.data() != null) {
+                                          // Refresh UI by returning to previous screen with updated data
+                                          Get.back(result: {'refresh': true});
+                                        }
+                                      });
+                                }
+                              });
+                            },
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SessionBox(
+                            icon: Icons.directions_car,
+                            title: 'Test Drive',
+                            color: primaryColor,
+                            hasData: session.testDriveId != null,
+                            onTap: () {
+                              // Navigate to the test drive details screen
+                              final carMake = session.car['make'] ?? '';
+                              final carModel = session.car['model'] ?? '';
+                              final plateNumber =
+                                  session.car['plateNumber'] ?? '';
+                              final carDetails =
+                                  '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
+
+                              // Navigate directly with or without existing testDriveId
+                              Get.to(
+                                () => TestDriveDetailsScreen(
+                                  session: session,
+                                  testDriveId: session.testDriveId,
+                                  clientName:
+                                      session.client['name'] ?? 'Unknown',
+                                  carDetails: carDetails,
+                                ),
+                                transition: Transition.rightToLeft,
+                              )?.then((result) {
+                                if (result != null &&
+                                    result['refresh'] == true) {
+                                  // Refresh session data
+                                  FirebaseFirestore.instance
+                                      .collection('sessions')
+                                      .doc(session.id)
+                                      .get()
+                                      .then((snapshot) {
+                                        if (snapshot.exists &&
+                                            snapshot.data() != null) {
+                                          // Refresh UI by returning to previous screen with updated data
+                                          Get.back(result: {'refresh': true});
+                                        }
+                                      });
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _SessionBox(
+                            icon: Icons.directions_car,
+                            title: 'G Report',
+                            color: primaryColor,
+                            hasData: session.reportId != null,
+                            onTap: () {
+                              // Navigate directly with only session ID - G Report page will fetch all needed data
+                              Get.to(
+                                () => ReportDetailsScreen(
+                                  sessionId: session.id,
+                                  reportId: session.reportId,
+                                ),
+                                transition: Transition.rightToLeft,
+                              )?.then((result) {
+                                if (result != null &&
+                                    result['refresh'] == true) {
+                                  // Refresh session data
+                                  FirebaseFirestore.instance
+                                      .collection('sessions')
+                                      .doc(session.id)
+                                      .get()
+                                      .then((snapshot) {
+                                        if (snapshot.exists &&
+                                            snapshot.data() != null) {
+                                          // Refresh UI by returning to previous screen with updated data
+                                          Get.back(result: {'refresh': true});
+                                        }
+                                      });
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Add Job Order button in a new row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SessionBox(
+                            icon: Icons.assignment,
+                            title: 'Job Order',
+                            color: primaryColor,
+                            // Job Order requires reportId to be present
+                            hasData: session.reportId != null,
+                            onTap: () {
+                              if (session.reportId == null) {
+                                // Show a message that report is needed for job order
+                                Get.snackbar(
+                                  'Report Required',
+                                  'Please complete the G Report first to create a Job Order.',
+                                  snackPosition: SnackPosition.BOTTOM,
+                                  backgroundColor: Colors.red.withOpacity(0.7),
+                                  colorText: Colors.white,
+                                );
+                                return;
+                              }
+
+                              // Navigate to the job order screen with reportId
+                              Get.to(
+                                () =>
+                                    JobOrderScreen(reportId: session.reportId!),
+                                transition: Transition.rightToLeft,
+                              )?.then((result) {
+                                if (result != null &&
+                                    result['refresh'] == true) {
+                                  // Refresh session data
+                                  FirebaseFirestore.instance
+                                      .collection('sessions')
+                                      .doc(session.id)
+                                      .get()
+                                      .then((snapshot) {
+                                        if (snapshot.exists &&
+                                            snapshot.data() != null) {
+                                          // Refresh UI by returning to previous screen with updated data
+                                          Get.back(result: {'refresh': true});
+                                        }
+                                      });
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                        // Adding an empty container for the second column to maintain layout consistency
+                        const SizedBox(width: 16),
+                        Expanded(child: Container()),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Activity history section
+                    Text(
+                      'Activity History',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
                       ),
-                    );
-                  }
+                    ),
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.history,
-                            size: 48,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No activity recorded yet',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: Colors.grey[500],
+                    const SizedBox(height: 16),
+
+                    // Activity feed
+                    StreamBuilder(
+                      stream:
+                          FirebaseFirestore.instance
+                              .collection('activity')
+                              .where('sessionId', isEqualTo: session.id)
+                              .orderBy('timestamp', descending: true)
+                              .snapshots(),
+                      builder: (
+                        context,
+                        AsyncSnapshot<QuerySnapshot> snapshot,
+                      ) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 40.0,
+                              ),
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  primaryColor,
+                                ),
+                                strokeWidth: 2,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+                          );
+                        }
 
-                  final activities = snapshot.data!.docs;
+                        if (snapshot.hasError) {
+                          final errorMessage =
+                              snapshot.error
+                                  .toString(); // Extract error details
+                          debugPrint(
+                            'Error loading activities: $errorMessage',
+                          ); // Log the error
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 40.0,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Error loading activities',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      color: Colors.red[400],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    errorMessage, // Display the error message
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey[500],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
 
-                  // Add debug print for Firebase link in activity
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 40.0,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.history,
+                                    size: 48,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No activity recorded yet',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
 
-                  return ListView.builder(
-                    itemCount: activities.length,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    physics: const BouncingScrollPhysics(),
-                    itemBuilder: (context, index) {
-                      final activity =
-                          activities[index].data() as Map<String, dynamic>;
-                      // Print each activity to help diagnose issues
-                      return _ActivityItem(
-                        activity: activity,
-                        color: primaryColor,
-                        formatTimestamp: _formatTimestamp,
-                      );
-                    },
-                  );
-                },
+                        final activities = snapshot.data!.docs;
+
+                        return ListView.builder(
+                          itemCount: activities.length,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: EdgeInsets.zero,
+                          itemBuilder: (context, index) {
+                            final activity =
+                                activities[index].data()
+                                    as Map<String, dynamic>;
+                            return _ActivityItem(
+                              activity: activity,
+                              color: primaryColor,
+                              formatTimestamp: _formatTimestamp,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    // Add some bottom padding for better scrolling experience
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

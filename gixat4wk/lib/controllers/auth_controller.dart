@@ -260,14 +260,15 @@ class AuthController extends GetxController {
         ],
         nonce: nonce,
         // Add webAuthenticationOptions with specific redirect URI for iOS
-        webAuthenticationOptions: Platform.isIOS
-            ? WebAuthenticationOptions(
-                clientId: 'com.roxate.gixatapp',
-                redirectUri: Uri.parse(
-                  'https://gixat-app.firebaseapp.com/__/auth/handler',
-                ),
-              )
-            : null,
+        webAuthenticationOptions:
+            Platform.isIOS
+                ? WebAuthenticationOptions(
+                  clientId: 'com.roxate.gixatapp',
+                  redirectUri: Uri.parse(
+                    'https://gixat-app.firebaseapp.com/__/auth/handler',
+                  ),
+                )
+                : null,
       );
 
       // Create an OAuthCredential from the Apple credential
@@ -339,12 +340,28 @@ class AuthController extends GetxController {
   // Sign out
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut(); // Sign out from Google
-      await _auth.signOut(); // Sign out from Firebase
+      // Check the provider data to determine how the user signed in
+      final user = _auth.currentUser;
+      final providerData = user?.providerData;
+
+      // Sign out from Google only if the user signed in with Google
+      if (providerData != null &&
+          providerData.any((element) => element.providerId == 'google.com')) {
+        await _googleSignIn.signOut();
+      }
+
+      // Always sign out from Firebase
+      await _auth.signOut();
     } catch (e) {
+      _errorService.logError(
+        e,
+        context: 'AuthController.signOut',
+        userId: _firebaseUser.value?.uid,
+      );
+
       Get.snackbar(
         'Error signing out',
-        e.toString(),
+        'Could not sign out properly. Please try again.',
         snackPosition: SnackPosition.BOTTOM,
       );
     }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gixat4wk/screens/clients/clients_screen.dart';
+import 'package:gixat4wk/screens/job_order/job_orders_screen.dart';
 import '../controllers/navigation_controller.dart';
 import 'sessions/sessions_screen.dart';
 import '../screens/add_client_screen.dart';
-import '../screens/messages_screen.dart';
 import '../screens/profile_screen.dart';
 
 class MainNavigationScreen extends StatelessWidget {
@@ -18,9 +18,9 @@ class MainNavigationScreen extends StatelessWidget {
 
     // List of screens to be shown in the tab view
     final List<Widget> screens = [
+      const JobOrdersScreen(),
       const SessionsScreen(),
       const ClientsScreen(),
-      const MessagesScreen(),
       const ProfileScreen(),
     ];
 
@@ -63,16 +63,17 @@ class MainNavigationScreen extends StatelessWidget {
                 children: [
                   _buildNavItem(
                     context: context,
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home,
+                    icon: Icons.align_vertical_center_outlined,
+                    activeIcon: Icons.align_vertical_center,
                     index: 0,
                     currentIndex: navController.currentIndex.value,
                     onTap: () => navController.changeTab(0),
+                    hasBadge: true,
                   ),
                   _buildNavItem(
                     context: context,
-                    icon: Icons.people_outline,
-                    activeIcon: Icons.people,
+                    icon: Icons.work_outline,
+                    activeIcon: Icons.work,
                     index: 1,
                     currentIndex: navController.currentIndex.value,
                     onTap: () => navController.changeTab(1),
@@ -87,17 +88,16 @@ class MainNavigationScreen extends StatelessWidget {
                   ),
                   _buildNavItem(
                     context: context,
-                    icon: Icons.chat_bubble_outline,
-                    activeIcon: Icons.chat_bubble,
+                    icon: Icons.people_outline,
+                    activeIcon: Icons.people,
                     index: 2,
                     currentIndex: navController.currentIndex.value,
                     onTap: () => navController.changeTab(2),
-                    hasBadge: true,
                   ),
                   _buildNavItem(
                     context: context,
-                    icon: Icons.person_outline,
-                    activeIcon: Icons.person,
+                    icon: Icons.settings_outlined,
+                    activeIcon: Icons.settings,
                     index: 3,
                     currentIndex: navController.currentIndex.value,
                     onTap: () => navController.changeTab(3),
@@ -153,23 +153,6 @@ class MainNavigationScreen extends StatelessWidget {
                   size: 24,
                 ),
               ),
-              if (hasBadge)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    height: 8,
-                    width: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.scaffoldBackgroundColor,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
           if (label != null) ...[
