@@ -4,36 +4,42 @@ import 'package:flutter/material.dart';
 class InfoRow extends StatelessWidget {
   final String label;
   final String value;
-  final bool isEditing;
+  final Color? labelColor;
+  final Color? valueColor;
 
   const InfoRow({
+    super.key,
     required this.label,
     required this.value,
-    this.isEditing = false,
-    super.key,
+    this.labelColor,
+    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 100,
+        Expanded(
+          flex: 2,
           child: Text(
-            '$label:',
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: labelColor ?? theme.colorScheme.primary,
             ),
           ),
         ),
-        const SizedBox(width: 8),
         Expanded(
+          flex: 3,
           child: Text(
-            value.isNotEmpty ? value : 'N/A',
-            style: TextStyle(
-              color: value.isNotEmpty ? Colors.white : Colors.grey[500],
+            value,
+            textAlign: TextAlign.end,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: valueColor ?? theme.colorScheme.onSurface,
             ),
           ),
         ),
@@ -49,45 +55,56 @@ class TextFieldRow extends StatelessWidget {
   final TextInputType keyboardType;
 
   const TextFieldRow({
+    super.key,
     required this.label,
     required this.controller,
     this.keyboardType = TextInputType.text,
-    super.key,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          width: 100,
+        Expanded(
+          flex: 2,
           child: Text(
-            '$label:',
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
             ),
           ),
         ),
-        const SizedBox(width: 8),
         Expanded(
+          flex: 3,
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
-            style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.black12,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
+                vertical: 8.0,
+                horizontal: 12.0,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.withAlpha(77)),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
               ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: theme.colorScheme.primary),
+              ),
+              isDense: true,
+              filled: true,
+              fillColor: theme.colorScheme.surface,
             ),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
         ),
       ],
@@ -103,22 +120,31 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.black12,
+        color:
+            theme.brightness == Brightness.light
+                ? Colors.grey[100]
+                : Colors.black12,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.withAlpha(77)),
       ),
       child: Column(
         children: [
-          Icon(Icons.info_outline, color: Colors.grey[600], size: 32),
+          Icon(
+            Icons.info_outline,
+            color: theme.colorScheme.onSurface.withOpacity(0.6),
+            size: 32,
+          ),
           const SizedBox(height: 12),
           Text(
             message,
             style: TextStyle(
-              color: Colors.grey[600],
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
               fontStyle: FontStyle.italic,
             ),
           ),

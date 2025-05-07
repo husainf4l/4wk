@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // App colors
-  static const Color primaryColor = Color(0xFF4A67F7);
-  static const Color secondaryColor = Color(0xFF03DAC5);
-  static const Color lightBackground = Color(0xFFF2F3F8);
+  static const Color primaryColor = Color(0xFFD32F2F); // Red
+  static const Color secondaryColor = Color(0xFF000000); // Black
+  static const Color lightBackground = Color(0xFFFFFFFF); // White
   static const Color darkBackground = Color(0xFF121212);
   static const Color darkSurface = Color(0xFF303030);
   static const Color darkCardColor = Color(0xFF242424);
-  static const Color lightTextColor = Color(0xFF303030);
+  static const Color lightTextColor = Color(0xFF000000); // Black
   static const Color darkTextColor = Colors.white;
-  static const Color lightBodyTextColor = Color(0xFF424242);
+  static const Color lightBodyTextColor = Color(
+    0xFF333333,
+  ); // Darker gray for body text
   static const Color darkBodyTextColor = Color(0xFFE0E0E0);
 
   // Light Theme
@@ -23,7 +25,6 @@ class AppTheme {
         primary: primaryColor,
         secondary: secondaryColor,
         surface: Colors.white,
-        // Replacing deprecated 'background' with appropriate property
         surfaceContainerLowest: lightBackground,
       ),
       scaffoldBackgroundColor: lightBackground,
@@ -51,6 +52,7 @@ class AppTheme {
       ),
       cardTheme: CardTheme(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
         elevation: 2,
       ),
       appBarTheme: const AppBarTheme(
@@ -73,7 +75,6 @@ class AppTheme {
         primary: primaryColor,
         secondary: secondaryColor,
         surface: darkSurface,
-        // Replacing deprecated 'background' with appropriate property
         surfaceContainerLowest: darkBackground,
       ),
       scaffoldBackgroundColor: darkBackground,

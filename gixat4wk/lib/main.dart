@@ -84,8 +84,6 @@ class MyApp extends StatelessWidget {
       title: '4wk App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(), // Use the light theme from AppTheme class
-      darkTheme: AppTheme.darkTheme(), // Use the dark theme from AppTheme class
-      themeMode: ThemeMode.system,
       home: const AuthWrapper(),
     );
   }

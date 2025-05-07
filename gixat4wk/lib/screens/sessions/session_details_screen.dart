@@ -54,8 +54,6 @@ class SessionDetailsScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Back button with minimal design
-
                         // Session status indicator
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -79,7 +77,6 @@ class SessionDetailsScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-
                         GestureDetector(
                           onTap: () => Get.off(() => MainNavigationScreen()),
                           child: Container(
@@ -91,7 +88,7 @@ class SessionDetailsScreen extends StatelessWidget {
                             child: const Icon(
                               Icons.close,
                               size: 18,
-                              color: Colors.white,
+                              color: Colors.black, // Black icon for close
                             ),
                           ),
                         ),
@@ -103,7 +100,7 @@ class SessionDetailsScreen extends StatelessWidget {
                       carTitle,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black, // Black text
                         letterSpacing: 0.4,
                       ),
                     ),
@@ -111,7 +108,7 @@ class SessionDetailsScreen extends StatelessWidget {
                     Text(
                       'Client: ${session.client['name'] ?? 'Unknown'}',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[400],
+                        color: Colors.grey[800], // Darker gray for subtitle
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -130,7 +127,7 @@ class SessionDetailsScreen extends StatelessWidget {
                     Text(
                       'Session Activities',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
+                        color: Colors.black, // Black text
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
                       ),
@@ -379,7 +376,7 @@ class SessionDetailsScreen extends StatelessWidget {
                     Text(
                       'Activity History',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
+                        color: Colors.black, // Black text
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
                       ),
@@ -563,7 +560,7 @@ class _SessionBox extends StatelessWidget {
       child: Container(
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.black12,
+          color: Colors.white, // White background for light theme
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withAlpha(51), width: 1),
         ),
@@ -594,7 +591,6 @@ class _SessionBox extends StatelessWidget {
                     child: Icon(
                       icon,
                       size: 24,
-                      // Change icon color to green if has data
                       color: hasData ? Colors.green : color,
                     ),
                   ),
@@ -604,7 +600,7 @@ class _SessionBox extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white,
+                      color: Colors.black, // Black text
                       letterSpacing: 0.2,
                     ),
                   ),
@@ -651,7 +647,7 @@ class _ActivityItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.black12,
+        color: Colors.white, // White background for light theme
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withAlpha(51), width: 1),
       ),
@@ -667,7 +663,7 @@ class _ActivityItem extends StatelessWidget {
                   Text(
                     activity['title'] ?? 'Activity',
                     style: theme.textTheme.titleSmall?.copyWith(
-                      color: Colors.white,
+                      color: Colors.black, // Black text
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -675,7 +671,7 @@ class _ActivityItem extends StatelessWidget {
                   Text(
                     formatTimestamp(activity['timestamp']),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[600],
+                      color: Colors.grey[700], // Darker gray for timestamp
                       fontSize: 12,
                     ),
                   ),

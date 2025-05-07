@@ -538,10 +538,10 @@ class _ReportAddItemSectionState extends State<ReportAddItemSection> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? color : Colors.grey[400]!,
+            color: isSelected ? color : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
-          color: isSelected ? color.withAlpha(25) : null,
+          color: isSelected ? color.withAlpha(50) : Colors.white,
         ),
         child: Column(
           children: [
@@ -561,6 +561,7 @@ class _ReportAddItemSectionState extends State<ReportAddItemSection> {
               label,
               style: TextStyle(
                 fontSize: 12,
+                color: Colors.black, // Black text for light theme
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),

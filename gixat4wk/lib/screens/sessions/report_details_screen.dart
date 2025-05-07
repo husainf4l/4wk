@@ -50,16 +50,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
   // Session data
   Session? _session;
 
-  // Generate a random 5-letter password
+  // Generate a random 4-digit password
   String _generateRandomPassword() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
     final random = Random();
-    return String.fromCharCodes(
-      Iterable.generate(
-        5,
-        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
-      ),
-    );
+    return List.generate(4, (_) => random.nextInt(10)).join('');
   }
 
   // Client and car info
@@ -438,6 +432,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
       // Update client data with form fields
       _clientData['phone'] = _clientPhoneController.text;
 
+      // Also update the client document directly in Firestore to ensure phone number is updated everywhere
+      await FirebaseFirestore.instance
+          .collection('clients')
+          .doc(_clientId)
+          .update({'phone': _clientPhoneController.text});
+
       // Handle address structure properly
       if (!_clientData.containsKey('address')) {
         _clientData['address'] = {};
@@ -452,6 +452,17 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           _clientCityController.text;
       (_clientData['address'] as Map<String, dynamic>)['country'] =
           _clientCountryController.text;
+
+      // Also update the client address in Firestore
+      await FirebaseFirestore.instance
+          .collection('clients')
+          .doc(_clientId)
+          .update({
+            'address': {
+              'city': _clientCityController.text,
+              'country': _clientCountryController.text,
+            },
+          });
 
       // If creating a new report, generate a random password
       if (widget.reportId == null) {
@@ -830,6 +841,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               title: Text(
                 'Edit ${itemKey[0].toUpperCase() + itemKey.substring(1)}',
+                style: const TextStyle(color: Colors.black), // Black text
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -840,10 +852,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     TextField(
                       controller: textController,
                       maxLines: 3,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.black), // Black text
                       decoration: InputDecoration(
                         labelText: 'Description',
-                        labelStyle: TextStyle(color: Colors.grey[400]),
+                        labelStyle: TextStyle(
+                          color: Colors.grey[800],
+                        ), // Darker label
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -855,10 +869,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     TextField(
                       controller: priceController,
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.black), // Black text
                       decoration: InputDecoration(
                         labelText: 'Price (AED)',
-                        labelStyle: TextStyle(color: Colors.grey[400]),
+                        labelStyle: TextStyle(
+                          color: Colors.grey[800],
+                        ), // Darker label
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -869,7 +885,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     // Urgency selector
                     Text(
                       'Urgency Level',
-                      style: TextStyle(color: Colors.grey[400]),
+                      style: TextStyle(color: Colors.grey[800]), // Darker label
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -905,7 +921,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                       children: [
                         Text(
                           'Visible in Report',
-                          style: TextStyle(color: Colors.grey[400]),
+                          style: TextStyle(
+                            color: Colors.grey[800],
+                          ), // Darker label
                         ),
                         const Spacer(),
                         Switch(
@@ -923,7 +941,10 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('CANCEL'),
+                  child: const Text(
+                    'CANCEL',
+                    style: TextStyle(color: Colors.black),
+                  ), // Black text
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -937,7 +958,13 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     updateFunction(updatedItem);
                     Navigator.of(context).pop();
                   },
-                  child: const Text('SAVE'),
+                  child: const Text(
+                    'SAVE',
+                    style: TextStyle(color: Colors.black),
+                  ), // Black text
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                  ),
                 ),
               ],
             );
@@ -1327,19 +1354,15 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 Text(
                   DateFormat.yMMMd().format(DateTime.now()),
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white,
+                    color: Colors.black, // Black text for date
                   ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 24),
-
           // Client Information Section
           _buildClientInfoSection(),
-
-          const SizedBox(height: 24),
 
           // Car Information Section
           _buildCarInfoSection(),
@@ -1348,7 +1371,9 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
           const SizedBox(height: 16),
           Text(
             'Car Details: $_carDetails',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.black,
+            ), // Black text
           ),
 
           const SizedBox(height: 24),
@@ -1490,11 +1515,18 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
 
   // Section builder methods
   Widget _buildClientInfoSection() {
+    final theme = Theme.of(context);
+
     return ReportSectionWidget(
       title: 'Client Information',
       child: Column(
         children: [
-          InfoRow(label: 'Name', value: _clientName),
+          InfoRow(
+            label: 'Name',
+            value: _clientName,
+            labelColor: theme.colorScheme.primary,
+            valueColor: theme.colorScheme.onSurface,
+          ),
           const SizedBox(height: 8),
           _isEditing
               ? TextFieldRow(
@@ -1502,7 +1534,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 controller: _clientPhoneController,
                 keyboardType: TextInputType.phone,
               )
-              : InfoRow(label: 'Phone', value: _clientPhoneController.text),
+              : InfoRow(
+                label: 'Phone',
+                value: _clientPhoneController.text,
+                labelColor: theme.colorScheme.primary,
+                valueColor: theme.colorScheme.onSurface,
+              ),
           const SizedBox(height: 8),
           _isEditing
               ? Column(
@@ -1520,11 +1557,18 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
               )
               : Column(
                 children: [
-                  InfoRow(label: 'City', value: _clientCityController.text),
+                  InfoRow(
+                    label: 'City',
+                    value: _clientCityController.text,
+                    labelColor: theme.colorScheme.primary,
+                    valueColor: theme.colorScheme.onSurface,
+                  ),
                   const SizedBox(height: 8),
                   InfoRow(
                     label: 'Country',
                     value: _clientCountryController.text,
+                    labelColor: theme.colorScheme.primary,
+                    valueColor: theme.colorScheme.onSurface,
                   ),
                 ],
               ),
@@ -1619,7 +1663,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                   TextField(
                     controller: _summaryController,
                     maxLines: 5,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: Colors.black), // Black text
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.black12,
@@ -1651,7 +1695,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 style: TextStyle(
                   color:
                       _summaryController.text.isNotEmpty
-                          ? Colors.white
+                          ? Colors
+                              .black87 // Changed to dark color for light mode
                           : Colors.grey[500],
                   fontStyle:
                       _summaryController.text.isNotEmpty
@@ -1715,7 +1760,7 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                   TextField(
                     controller: _recommendationsController,
                     maxLines: 5,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: Colors.black), // Black text
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.black12,
@@ -1747,7 +1792,8 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                 style: TextStyle(
                   color:
                       _recommendationsController.text.isNotEmpty
-                          ? Colors.white
+                          ? Colors
+                              .black87 // Changed to dark color for light mode
                           : Colors.grey[500],
                   fontStyle:
                       _recommendationsController.text.isNotEmpty

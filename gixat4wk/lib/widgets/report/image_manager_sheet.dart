@@ -180,14 +180,21 @@ class _ImageManagerSheetState extends State<ImageManagerSheet> {
                                       imageUrl,
                                       fit: BoxFit.cover,
                                       errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Container(
-                                                color: Colors.grey[800],
-                                                child: const Icon(
-                                                  Icons.broken_image,
-                                                  color: Colors.white54,
-                                                ),
+                                          (
+                                            context,
+                                            error,
+                                            stackTrace,
+                                          ) => Container(
+                                            color:
+                                                Colors
+                                                    .grey[300], // Lighter color for light mode
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.broken_image,
+                                                color: Colors.red,
                                               ),
+                                            ),
+                                          ),
                                     ),
                                   ),
                                   // Selection overlay

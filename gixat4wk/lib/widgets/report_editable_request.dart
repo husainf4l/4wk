@@ -82,7 +82,7 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.grey[800],
+            color: Colors.grey[100], // Light grey for light theme
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.grey.withAlpha(100)),
           ),
@@ -116,7 +116,7 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.black12,
+          color: Colors.white, // White for light theme
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: theme.primaryColor.withAlpha(26)),
         ),
@@ -137,7 +137,7 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
               child: Text(
                 widget.item[widget.fieldName] ?? '',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.white,
+                  color: Colors.black, // Black text for light theme
                 ),
               ),
             ),
@@ -159,7 +159,7 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black12,
+        color: Colors.grey[50], // Very light gray for edit mode
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color:
@@ -181,7 +181,10 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
               IconButton(
                 icon: Icon(
                   _visible ? Icons.visibility : Icons.visibility_off,
-                  color: _visible ? Colors.white : Colors.grey,
+                  color:
+                      _visible
+                          ? theme.primaryColor
+                          : Colors.grey, // Use primary color (red) when visible
                 ),
                 tooltip: _visible ? 'Hide from client' : 'Show to client',
                 onPressed: () {
@@ -237,7 +240,9 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
           TextField(
             controller: _textController,
             style: TextStyle(
-              color: _visible ? Colors.white : Colors.grey,
+              color:
+                  Colors
+                      .black, // Black text for better visibility in light theme
               decoration: _visible ? null : TextDecoration.lineThrough,
             ),
             decoration: InputDecoration(
@@ -260,7 +265,9 @@ class _ReportEditableRequestState extends State<ReportEditableRequest> {
           // Price field
           TextField(
             controller: _priceController,
-            style: TextStyle(color: _visible ? Colors.white : Colors.grey),
+            style: TextStyle(
+              color: Colors.black,
+            ), // Black text for better visibility in light theme
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: 'Price (AED)',

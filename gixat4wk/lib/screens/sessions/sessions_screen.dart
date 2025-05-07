@@ -89,10 +89,14 @@ class SessionsScreen extends StatelessWidget {
                   'Sessions',
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: Colors.black, // Ensure title is black
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.add),
+                  icon: const Icon(
+                    Icons.add,
+                    color: Colors.black,
+                  ), // Black icon
                   onPressed: () => Get.to(() => const CreateSessionScreen()),
                 ),
               ],
@@ -119,7 +123,9 @@ class SessionsScreen extends StatelessWidget {
                           placeholderStyle: const TextStyle(
                             color: CupertinoColors.systemGrey2,
                           ),
-                          style: const TextStyle(color: CupertinoColors.label),
+                          style: const TextStyle(
+                            color: Colors.black,
+                          ), // Black text
                           borderRadius: BorderRadius.circular(10),
                           backgroundColor: CupertinoColors.systemGrey6,
                           prefixInsets: const EdgeInsets.only(
@@ -145,8 +151,9 @@ class SessionsScreen extends StatelessWidget {
                                   CupertinoIcons.line_horizontal_3_decrease,
                                   color:
                                       selectedStatusFilters.isNotEmpty
-                                          ? CupertinoColors.activeBlue
-                                          : CupertinoColors.systemGrey,
+                                          ? Colors
+                                              .red // Use red for active
+                                          : Colors.black, // Black for inactive
                                   size: 16,
                                 ),
                                 if (selectedStatusFilters.isNotEmpty) ...[
@@ -155,12 +162,12 @@ class SessionsScreen extends StatelessWidget {
                                     padding: const EdgeInsets.all(4),
                                     decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: CupertinoColors.activeBlue,
+                                      color: Colors.red, // Red badge
                                     ),
                                     child: Text(
                                       selectedStatusFilters.length.toString(),
                                       style: const TextStyle(
-                                        color: CupertinoColors.white,
+                                        color: Colors.white,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -228,7 +235,8 @@ class SessionsScreen extends StatelessWidget {
                                               SessionUtils.formatStatus(status),
                                               style: const TextStyle(
                                                 fontSize: 12,
-                                                color: CupertinoColors.label,
+                                                color:
+                                                    Colors.black, // Black text
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
@@ -242,7 +250,7 @@ class SessionsScreen extends StatelessWidget {
                                                     .xmark_circle_fill,
                                                 size: 14,
                                                 color:
-                                                    CupertinoColors.systemGrey,
+                                                    Colors.black, // Black icon
                                               ),
                                             ),
                                           ],
@@ -282,14 +290,14 @@ class SessionsScreen extends StatelessWidget {
                           Text(
                             'No active sessions found',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: Colors.black, // Black text
                               fontSize: 18,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Start a new session to see it here',
-                            style: TextStyle(color: Colors.grey[500]),
+                            style: TextStyle(color: Colors.black), // Black text
                           ),
                         ],
                       ),
@@ -364,7 +372,7 @@ class SessionsScreen extends StatelessWidget {
                             Text(
                               'No sessions match your filters',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: Colors.black, // Black text
                                 fontSize: 18,
                               ),
                             ),
@@ -375,8 +383,14 @@ class SessionsScreen extends StatelessWidget {
                                 searchQuery.value = '';
                                 selectedStatusFilters.clear();
                               },
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Clear all filters'),
+                              icon: const Icon(
+                                Icons.refresh,
+                                color: Colors.black,
+                              ),
+                              label: const Text(
+                                'Clear all filters',
+                                style: TextStyle(color: Colors.black),
+                              ),
                             ),
                           ],
                         ),
@@ -408,13 +422,17 @@ class SessionsScreen extends StatelessWidget {
                             ),
                             title: Text(
                               '${car['make']} ${car['model']} (${car['plateNumber']})',
-                              style: theme.textTheme.titleSmall,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: Colors.black,
+                              ), // Black text
                             ),
                             subtitle: Row(
                               children: [
                                 Text(
                                   '${client['name']} ',
-                                  style: theme.textTheme.bodySmall,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.black,
+                                  ), // Black text
                                 ),
                               ],
                             ),

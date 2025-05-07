@@ -259,16 +259,6 @@ class AuthController extends GetxController {
           AppleIDAuthorizationScopes.fullName,
         ],
         nonce: nonce,
-        // Add webAuthenticationOptions with specific redirect URI for iOS
-        webAuthenticationOptions:
-            Platform.isIOS
-                ? WebAuthenticationOptions(
-                  clientId: 'com.roxate.gixatapp',
-                  redirectUri: Uri.parse(
-                    'https://gixat-app.firebaseapp.com/__/auth/handler',
-                  ),
-                )
-                : null,
       );
 
       // Create an OAuthCredential from the Apple credential
@@ -301,6 +291,7 @@ class AuthController extends GetxController {
         e,
         context: 'AuthController.signInWithApple',
         userId: _firebaseUser.value?.uid,
+        stackTrace: StackTrace.current, // Add stack trace for better debugging
       );
       Get.snackbar(
         'Error',

@@ -210,11 +210,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ? theme.colorScheme.primary
             : theme.brightness == Brightness.dark
             ? Colors.grey[800]
-            : Colors.grey[200];
+            : Colors
+                .grey[200]; // Light gray background for received messages in light mode
     final textColor =
         isUserMessage
             ? Colors.white
-            : theme.textTheme.bodyLarge?.color ?? Colors.black;
+            : theme.brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black; // Black text for received messages in light mode
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),

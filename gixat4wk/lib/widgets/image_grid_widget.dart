@@ -62,34 +62,37 @@ class ImageGridWidget extends StatelessWidget {
               },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  uploadedImageUrls[index],
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.grey[200],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value:
-                              loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
+                child: Container(
+                  color: Colors.white, // White background for light theme
+                  child: Image.network(
+                    uploadedImageUrls[index],
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value:
+                                loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: Icon(Icons.broken_image, color: Colors.red),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: Icon(Icons.broken_image, color: Colors.red),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -101,9 +104,10 @@ class ImageGridWidget extends StatelessWidget {
                   onTap: () => onRemoveUploadedImage!(index),
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1),
                     ),
                     child: const Icon(
                       Icons.close,
@@ -195,9 +199,10 @@ class ImageGridWidget extends StatelessWidget {
                   onTap: () => onRemoveSelectedImage!(index),
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1),
                     ),
                     child: const Icon(
                       Icons.close,

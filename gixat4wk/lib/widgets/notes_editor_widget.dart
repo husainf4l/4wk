@@ -22,7 +22,10 @@ class NotesEditorWidget extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isEditing ? theme.primaryColor.withAlpha(13) : theme.cardColor,
+          color:
+              isEditing
+                  ? Colors.grey[100] // Subtle light gray for edit mode
+                  : Colors.white, // White for view mode
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color:
@@ -89,28 +92,54 @@ class NotesEditorWidget extends StatelessWidget {
       barrierDismissible: true,
       builder:
           (dialogContext) => AlertDialog(
-            title: const Text('Edit Notes'),
+            backgroundColor: Colors.white, // White background for dialog
+            title: const Text(
+              'Edit Notes',
+              style: TextStyle(color: Colors.black),
+            ), // Black text for title
             content: TextField(
               controller: notesController,
               autofocus: true,
               maxLines: 5,
-              decoration: const InputDecoration(
+              style: const TextStyle(
+                color: Colors.black,
+              ), // Black text for input
+              decoration: InputDecoration(
                 hintText: 'Enter notes here',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.note_alt),
+                hintStyle: TextStyle(color: Colors.grey[500]), // Grey hint text
+                border: const OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: Theme.of(context).primaryColor,
+                  ), // Use primary color for focused border
+                ),
+                prefixIcon: Icon(
+                  Icons.note_alt,
+                  color: Colors.grey[600],
+                ), // Grey icon
               ),
               textCapitalization: TextCapitalization.sentences,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('CANCEL'),
+                child: Text(
+                  'CANCEL',
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
               ),
               ElevatedButton(
                 onPressed: () {
                   onSave(notesController.text.trim());
                   Navigator.of(dialogContext).pop();
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      Theme.of(
+                        context,
+                      ).primaryColor, // Primary color background
+                  foregroundColor: Colors.white, // White text
+                ),
                 child: const Text('SAVE'),
               ),
             ],

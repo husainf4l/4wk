@@ -430,7 +430,8 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
                       Container(
                         padding: const EdgeInsets.all(12.0),
                         decoration: BoxDecoration(
-                          color: Colors.black12,
+                          color:
+                              Colors.white, // White background for light theme
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: theme.primaryColor.withAlpha(51),
@@ -456,6 +457,7 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
                                 widget.carDetails,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   fontWeight: FontWeight.w500,
+                                  color: Colors.black, // Black text
                                 ),
                               ),
                             ),
@@ -476,7 +478,8 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
                       Container(
                         padding: const EdgeInsets.all(12.0),
                         decoration: BoxDecoration(
-                          color: Colors.black12,
+                          color:
+                              Colors.white, // White background for light theme
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: theme.primaryColor.withAlpha(51),
@@ -507,6 +510,9 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
                                           hintText: 'Enter vehicle mileage',
                                           border: InputBorder.none,
                                         ),
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                        ), // Black text
                                       )
                                       : Text(
                                         _mileageController.text.isNotEmpty
@@ -519,7 +525,8 @@ class _ClientNotesDetailsScreenState extends State<ClientNotesDetailsScreen> {
                                                   _mileageController
                                                           .text
                                                           .isNotEmpty
-                                                      ? Colors.white
+                                                      ? Colors
+                                                          .black // Black text
                                                       : Colors.grey,
                                             ),
                                       ),

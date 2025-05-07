@@ -54,7 +54,7 @@ class DetailScreenHeader extends StatelessWidget {
                   child: const Icon(
                     Icons.arrow_back_ios_new_rounded,
                     size: 18,
-                    color: Colors.white,
+                    color: Colors.black, // Black icon for back
                   ),
                 ),
               ),
@@ -66,15 +66,15 @@ class DetailScreenHeader extends StatelessWidget {
                     title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black, // Black text for title
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[400]),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[600],
+                    ), // Darker gray for subtitle
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -105,7 +105,9 @@ class DetailScreenHeader extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   child: const CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.black,
+                    ), // Black loader
                   ),
                 )
               else

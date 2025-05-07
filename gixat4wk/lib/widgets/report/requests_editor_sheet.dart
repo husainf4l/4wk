@@ -161,7 +161,10 @@ class _RequestsEditorSheetState extends State<RequestsEditorSheet> {
 
     return Card(
       key: ValueKey(item['id'] ?? index),
-      color: isVisible ? Colors.black12 : Colors.grey[800],
+      color:
+          isVisible
+              ? Colors.white
+              : Colors.grey[200], // Light color for light theme
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -178,7 +181,10 @@ class _RequestsEditorSheetState extends State<RequestsEditorSheet> {
             title: Text(
               item[widget.fieldName] ?? '',
               style: TextStyle(
-                color: isVisible ? Colors.white : Colors.grey,
+                color:
+                    isVisible
+                        ? Colors.black
+                        : Colors.grey, // Changed to black for light theme
                 decoration: isVisible ? null : TextDecoration.lineThrough,
               ),
             ),
@@ -201,7 +207,10 @@ class _RequestsEditorSheetState extends State<RequestsEditorSheet> {
                     size: 18,
                   ),
                 IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.white70),
+                  icon: const Icon(
+                    Icons.edit,
+                    color: Colors.black54,
+                  ), // Changed from white70 to black54 for light mode
                   onPressed: () => _editItem(item, index),
                 ),
                 IconButton(

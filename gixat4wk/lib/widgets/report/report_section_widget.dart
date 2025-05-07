@@ -4,60 +4,86 @@ import '../../widgets/report/info_widgets.dart';
 /// Widget for building report sections with consistent styling
 class ReportSectionWidget extends StatelessWidget {
   final String title;
-  final Widget? trailingWidget;
-  final List<Widget>? actions;
   final Widget child;
   final EdgeInsetsGeometry? padding;
-  final bool useCard;
+  final List<Widget>? actions;
+  final bool hasBorder;
 
   const ReportSectionWidget({
+    super.key,
     required this.title,
     required this.child,
-    this.trailingWidget,
-    this.actions,
     this.padding,
-    this.useCard = true,
-    super.key,
+    this.actions,
+    this.hasBorder = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      decoration:
+          hasBorder
+              ? BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color:
+                      theme.brightness == Brightness.light
+                          ? Colors.grey.withOpacity(0.2)
+                          : Colors.white.withOpacity(0.1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              )
+              : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.1),
+              borderRadius:
+                  hasBorder
+                      ? const BorderRadius.only(
+                        topLeft: Radius.circular(10),
+                        topRight: Radius.circular(10),
+                      )
+                      : BorderRadius.circular(10),
             ),
-            if (actions != null)
-              Row(mainAxisSize: MainAxisSize.min, children: actions!)
-            else if (trailingWidget != null)
-              trailingWidget!,
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (useCard)
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+                if (actions != null) ...actions!,
+              ],
+            ),
+          ),
+          // Section content
           Container(
             width: double.infinity,
             padding: padding ?? const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black12,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.primaryColor.withAlpha(51)),
-            ),
             child: child,
-          )
-        else
-          child,
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -91,27 +117,24 @@ class RequestsSectionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return ReportSectionWidget(
       title: title,
-      trailingWidget:
+      actions:
           isEditing
-              ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (onEditAll != null)
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.white70),
-                      tooltip: 'Manage all items',
-                      onPressed: onEditAll,
-                    ),
-                  if (onAddNew != null)
-                    IconButton(
-                      icon: const Icon(Icons.add_circle, color: Colors.green),
-                      tooltip: 'Add item',
-                      onPressed: onAddNew,
-                    ),
-                ],
-              )
+              ? [
+                if (onEditAll != null)
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.white70),
+                    tooltip: 'Manage all items',
+                    onPressed: onEditAll,
+                  ),
+                if (onAddNew != null)
+                  IconButton(
+                    icon: const Icon(Icons.add_circle, color: Colors.green),
+                    tooltip: 'Add item',
+                    onPressed: onAddNew,
+                  ),
+              ]
               : null,
-      useCard: false,
+      hasBorder: false,
       child:
           items.isEmpty
               ? const EmptyStateWidget(message: 'No items added yet')
@@ -146,7 +169,10 @@ class RequestsSectionWidget extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isVisible ? Colors.black12 : Colors.grey[800],
+        color:
+            isVisible
+                ? Colors.white
+                : Colors.grey[200], // Light background for light theme
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color:
@@ -179,7 +205,11 @@ class RequestsSectionWidget extends StatelessWidget {
                         item[fieldName] ?? '',
                         style: TextStyle(
                           fontSize: 16,
-                          color: isVisible ? Colors.white : Colors.grey,
+                          color:
+                              isVisible
+                                  ? Colors.black
+                                  : Colors
+                                      .grey, // Changed to black for light theme
                           decoration:
                               isVisible ? null : TextDecoration.lineThrough,
                         ),
@@ -276,17 +306,25 @@ class NotesSectionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return ReportSectionWidget(
       title: title,
-      trailingWidget:
+      actions:
           isEditing && onEdit != null
-              ? IconButton(
-                icon: const Icon(Icons.edit, color: Colors.white70),
-                onPressed: onEdit,
-              )
+              ? [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.white70),
+                  onPressed: onEdit,
+                ),
+              ]
               : null,
       child: Text(
         notes ?? 'No notes recorded',
         style: TextStyle(
-          color: notes != null ? Colors.white : Colors.grey[500],
+          color:
+              notes != null
+                  ? Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors
+                          .black // Black text in light mode
+                  : Colors.grey[500],
           fontStyle: notes != null ? FontStyle.normal : FontStyle.italic,
         ),
       ),
@@ -366,9 +404,12 @@ class ImagesSectionWidget extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder:
                     (context, error, stackTrace) => Container(
-                      color: Colors.grey[800],
+                      color: Colors.grey[300], // Lighter gray for light theme
                       child: const Center(
-                        child: Icon(Icons.broken_image, color: Colors.white54),
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.red,
+                        ), // Red icon for broken image
                       ),
                     ),
               ),
