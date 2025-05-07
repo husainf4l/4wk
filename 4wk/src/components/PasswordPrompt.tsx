@@ -53,7 +53,7 @@ const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSubmit, error }) => {
               className={`relative block w-full px-3 py-2 border ${
                 error ? "border-red-500" : "border-neutral-700"
               } rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm bg-neutral-900 text-white placeholder-neutral-500`}
-              placeholder="Enter 5-letter password"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
