@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "33441701161",
-    "project_id": "gixat4wk",
-    "storage_bucket": "gixat4wk.firebasestorage.app"
+    "project_number": "274884115180",
+    "project_id": "gixat-4wk",
+    "storage_bucket": "gixat-4wk.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:33441701161:android:8c08c11c207b3469396b38",
+        "mobilesdk_app_id": "1:274884115180:android:87ea36f4815b80216103c9",
         "android_client_info": {
           "package_name": "ae.u4wk.gixat4wk"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "33441701161-rae253e714gvnsdcl5vgu524an0e219s.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBnqTMHZwVD1ZsGkrnajoMDK9UDjPKzPZM"
+          "current_key": "AIzaSyDtMYeeU9CSGXvd9HyV2vk2qttf-sdc66c"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "33441701161-rae253e714gvnsdcl5vgu524an0e219s.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

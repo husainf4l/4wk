@@ -1,8 +1,0 @@
-{
-  "projects": {
-    "default": "gixat-app",
-    "production": "gixat4wk"
-  },
-  "targets": {},
-  "etags": {}
-}
