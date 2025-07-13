@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/car.dart';
 import '../models/client.dart'; // Added import for Client model
-import 'session_service.dart';
+import 'session/session_service.dart';
 
 class CarService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

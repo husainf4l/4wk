@@ -2,18 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:gixat4wk/screens/main_navigation_screen.dart';
+import 'unified_session_activity_screen.dart';
 import '../../models/session.dart';
 import '../../utils/session_utils.dart';
-import 'client_notes_details_screen.dart';
-import 'inspection_details_screen.dart';
-import 'test_drive_details_screen.dart';
-import 'report_details_screen.dart';
-import 'job_order_screen.dart';
+import '../../services/session/session_service.dart';
+import '../../models/unified_session_activity.dart';
 
-class SessionDetailsScreen extends StatelessWidget {
+class SessionDetailsScreen extends StatefulWidget {
   final Session session;
 
   const SessionDetailsScreen({super.key, required this.session});
+
+  @override
+  State<SessionDetailsScreen> createState() => _SessionDetailsScreenState();
+}
+
+class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +29,9 @@ class SessionDetailsScreen extends StatelessWidget {
     final primaryColor = theme.primaryColor;
 
     // Extract car details
-    final carMake = session.car['make'] ?? '';
-    final carModel = session.car['model'] ?? '';
-    final plateNumber = session.car['plateNumber'] ?? '';
+    final carMake = widget.session.car['make'] ?? '';
+    final carModel = widget.session.car['model'] ?? '';
+    final plateNumber = widget.session.car['plateNumber'] ?? '';
     final carTitle =
         '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
 
@@ -62,17 +70,17 @@ class SessionDetailsScreen extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: SessionUtils.getStatusColor(
-                              session.status,
+                              widget.session.status,
                             ).withAlpha(38),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            SessionUtils.formatStatus(session.status),
+                            SessionUtils.formatStatus(widget.session.status),
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: SessionUtils.getStatusColor(
-                                session.status,
+                                widget.session.status,
                               ),
                             ),
                           ),
@@ -106,7 +114,7 @@ class SessionDetailsScreen extends StatelessWidget {
                     ),
                     // Client name
                     Text(
-                      'Client: ${session.client['name'] ?? 'Unknown'}',
+                      'Client: ${widget.session.client['name'] ?? 'Unknown'}',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.grey[800], // Darker gray for subtitle
                         letterSpacing: 0.2,
@@ -140,43 +148,22 @@ class SessionDetailsScreen extends StatelessWidget {
                             icon: Icons.sticky_note_2_outlined,
                             title: 'Client Notes',
                             color: primaryColor,
-                            hasData: session.clientNoteId != null,
+                            hasData: false,
                             onTap: () {
-                              // Navigate to the client notes details screen
-                              final carMake = session.car['make'] ?? '';
-                              final carModel = session.car['model'] ?? '';
-                              final plateNumber =
-                                  session.car['plateNumber'] ?? '';
-                              final carDetails =
-                                  '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
-
-                              // Navigate directly with or without existing clientNoteId
+                              // Navigate to unified session activity screen for client notes
                               Get.to(
-                                () => ClientNotesDetailsScreen(
-                                  session: session,
-                                  clientNotesId: session.clientNoteId,
-                                  clientName:
-                                      session.client['name'] ?? 'Unknown',
-                                  carDetails: carDetails,
+                                () => UnifiedSessionActivityScreen(
+                                  sessionId: widget.session.id,
+                                  clientId: widget.session.clientId,
+                                  carId: widget.session.car['id'] ?? '',
+                                  garageId: widget.session.garageId,
+                                  stage: ActivityStage.clientNotes,
+                                  sessionData: {
+                                    'car': widget.session.car,
+                                    'client': widget.session.client,
+                                  },
                                 ),
-                                transition: Transition.rightToLeft,
-                              )?.then((result) {
-                                if (result != null &&
-                                    result['refresh'] == true) {
-                                  // Refresh session data
-                                  FirebaseFirestore.instance
-                                      .collection('sessions')
-                                      .doc(session.id)
-                                      .get()
-                                      .then((snapshot) {
-                                        if (snapshot.exists &&
-                                            snapshot.data() != null) {
-                                          // Refresh UI by returning to previous screen with updated data
-                                          Get.back(result: {'refresh': true});
-                                        }
-                                      });
-                                }
-                              });
+                              );
                             },
                           ),
                         ),
@@ -186,44 +173,8 @@ class SessionDetailsScreen extends StatelessWidget {
                             icon: Icons.search,
                             title: 'Inspection',
                             color: primaryColor,
-                            hasData: session.inspectionId != null,
-                            onTap: () {
-                              // Navigate to the inspection details screen
-                              final carMake = session.car['make'] ?? '';
-                              final carModel = session.car['model'] ?? '';
-                              final plateNumber =
-                                  session.car['plateNumber'] ?? '';
-                              final carDetails =
-                                  '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
-
-                              // Navigate directly with or without existing inspectionId
-                              Get.to(
-                                () => InspectionDetailsScreen(
-                                  session: session,
-                                  inspectionId: session.inspectionId,
-                                  clientName:
-                                      session.client['name'] ?? 'Unknown',
-                                  carDetails: carDetails,
-                                ),
-                                transition: Transition.rightToLeft,
-                              )?.then((result) {
-                                if (result != null &&
-                                    result['refresh'] == true) {
-                                  // Refresh session data
-                                  FirebaseFirestore.instance
-                                      .collection('sessions')
-                                      .doc(session.id)
-                                      .get()
-                                      .then((snapshot) {
-                                        if (snapshot.exists &&
-                                            snapshot.data() != null) {
-                                          // Refresh UI by returning to previous screen with updated data
-                                          Get.back(result: {'refresh': true});
-                                        }
-                                      });
-                                }
-                              });
-                            },
+                            hasData: false,
+                            onTap: () {},
                           ),
                         ),
                       ],
@@ -236,44 +187,8 @@ class SessionDetailsScreen extends StatelessWidget {
                             icon: Icons.directions_car,
                             title: 'Test Drive',
                             color: primaryColor,
-                            hasData: session.testDriveId != null,
-                            onTap: () {
-                              // Navigate to the test drive details screen
-                              final carMake = session.car['make'] ?? '';
-                              final carModel = session.car['model'] ?? '';
-                              final plateNumber =
-                                  session.car['plateNumber'] ?? '';
-                              final carDetails =
-                                  '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
-
-                              // Navigate directly with or without existing testDriveId
-                              Get.to(
-                                () => TestDriveDetailsScreen(
-                                  session: session,
-                                  testDriveId: session.testDriveId,
-                                  clientName:
-                                      session.client['name'] ?? 'Unknown',
-                                  carDetails: carDetails,
-                                ),
-                                transition: Transition.rightToLeft,
-                              )?.then((result) {
-                                if (result != null &&
-                                    result['refresh'] == true) {
-                                  // Refresh session data
-                                  FirebaseFirestore.instance
-                                      .collection('sessions')
-                                      .doc(session.id)
-                                      .get()
-                                      .then((snapshot) {
-                                        if (snapshot.exists &&
-                                            snapshot.data() != null) {
-                                          // Refresh UI by returning to previous screen with updated data
-                                          Get.back(result: {'refresh': true});
-                                        }
-                                      });
-                                }
-                              });
-                            },
+                            hasData: true,
+                            onTap: () {},
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -282,33 +197,8 @@ class SessionDetailsScreen extends StatelessWidget {
                             icon: Icons.directions_car,
                             title: 'G Report',
                             color: primaryColor,
-                            hasData: session.reportId != null,
-                            onTap: () {
-                              // Navigate directly with only session ID - G Report page will fetch all needed data
-                              Get.to(
-                                () => ReportDetailsScreen(
-                                  sessionId: session.id,
-                                  reportId: session.reportId,
-                                ),
-                                transition: Transition.rightToLeft,
-                              )?.then((result) {
-                                if (result != null &&
-                                    result['refresh'] == true) {
-                                  // Refresh session data
-                                  FirebaseFirestore.instance
-                                      .collection('sessions')
-                                      .doc(session.id)
-                                      .get()
-                                      .then((snapshot) {
-                                        if (snapshot.exists &&
-                                            snapshot.data() != null) {
-                                          // Refresh UI by returning to previous screen with updated data
-                                          Get.back(result: {'refresh': true});
-                                        }
-                                      });
-                                }
-                              });
-                            },
+                            hasData: widget.session.reportId != null,
+                            onTap: () {},
                           ),
                         ),
                       ],
@@ -316,7 +206,6 @@ class SessionDetailsScreen extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
-                    // Add Job Order button in a new row
                     Row(
                       children: [
                         Expanded(
@@ -325,43 +214,8 @@ class SessionDetailsScreen extends StatelessWidget {
                             title: 'Job Order',
                             color: primaryColor,
                             // Job Order requires reportId to be present
-                            hasData: session.reportId != null,
-                            onTap: () {
-                              if (session.reportId == null) {
-                                // Show a message that report is needed for job order
-                                Get.snackbar(
-                                  'Report Required',
-                                  'Please complete the G Report first to create a Job Order.',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  backgroundColor: Colors.red.withValues(alpha: 0.7),
-                                  colorText: Colors.white,
-                                );
-                                return;
-                              }
-
-                              // Navigate to the job order screen with reportId
-                              Get.to(
-                                () =>
-                                    JobOrderScreen(reportId: session.reportId!),
-                                transition: Transition.rightToLeft,
-                              )?.then((result) {
-                                if (result != null &&
-                                    result['refresh'] == true) {
-                                  // Refresh session data
-                                  FirebaseFirestore.instance
-                                      .collection('sessions')
-                                      .doc(session.id)
-                                      .get()
-                                      .then((snapshot) {
-                                        if (snapshot.exists &&
-                                            snapshot.data() != null) {
-                                          // Refresh UI by returning to previous screen with updated data
-                                          Get.back(result: {'refresh': true});
-                                        }
-                                      });
-                                }
-                              });
-                            },
+                            hasData: widget.session.reportId != null,
+                            onTap: () {},
                           ),
                         ),
                         // Adding an empty container for the second column to maintain layout consistency
@@ -384,13 +238,13 @@ class SessionDetailsScreen extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
-                    // Activity feed
+                    // Activity feed - Show both unified activities and legacy activities
                     StreamBuilder(
                       stream:
                           FirebaseFirestore.instance
-                              .collection('activity')
-                              .where('sessionId', isEqualTo: session.id)
-                              .orderBy('timestamp', descending: true)
+                              .collection('session_activities')
+                              .where('sessionId', isEqualTo: widget.session.id)
+                              .orderBy('createdAt', descending: true)
                               .snapshots(),
                       builder: (
                         context,
@@ -486,7 +340,7 @@ class SessionDetailsScreen extends StatelessWidget {
                             final activity =
                                 activities[index].data()
                                     as Map<String, dynamic>;
-                            return _ActivityItem(
+                            return _UnifiedActivityItem(
                               activity: activity,
                               color: primaryColor,
                               formatTimestamp: _formatTimestamp,
@@ -511,29 +365,30 @@ class SessionDetailsScreen extends StatelessWidget {
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return '';
 
+    DateTime? dateTime;
+
     if (timestamp is Timestamp) {
-      final dateTime = timestamp.toDate();
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final activityDate = DateTime(
-        dateTime.year,
-        dateTime.month,
-        dateTime.day,
-      );
-
-      final time =
-          '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-
-      if (activityDate == today) {
-        return 'Today at $time';
-      } else if (activityDate == today.subtract(const Duration(days: 1))) {
-        return 'Yesterday at $time';
-      } else {
-        return '${dateTime.day}/${dateTime.month}/${dateTime.year} at $time';
-      }
+      dateTime = timestamp.toDate();
+    } else if (timestamp is DateTime) {
+      dateTime = timestamp;
     }
 
-    return '';
+    if (dateTime == null) return '';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final activityDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    final time =
+        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+
+    if (activityDate == today) {
+      return 'Today at $time';
+    } else if (activityDate == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday at $time';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year} at $time';
+    }
   }
 }
 
@@ -628,13 +483,13 @@ class _SessionBox extends StatelessWidget {
   }
 }
 
-// Activity item component
-class _ActivityItem extends StatelessWidget {
+// Unified activity item component for new session_activities collection
+class _UnifiedActivityItem extends StatelessWidget {
   final Map<String, dynamic> activity;
   final Color color;
   final String Function(dynamic) formatTimestamp;
 
-  const _ActivityItem({
+  const _UnifiedActivityItem({
     required this.activity,
     required this.color,
     required this.formatTimestamp,
@@ -643,41 +498,149 @@ class _ActivityItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final stage = activity['stage'] ?? '';
+    final status = activity['status'] ?? 'draft';
+    final notes = activity['notes'] ?? '';
+    final images = activity['images'] as List? ?? [];
+    final requests = activity['requests'] as List? ?? [];
+
+    // Get stage-specific icon and title
+    IconData stageIcon;
+    String stageTitle;
+    Color stageColor;
+
+    switch (stage) {
+      case 'clientNotes':
+        stageIcon = Icons.sticky_note_2_outlined;
+        stageTitle = 'Client Notes';
+        stageColor = Colors.blue;
+        break;
+      case 'inspection':
+        stageIcon = Icons.search;
+        stageTitle = 'Inspection';
+        stageColor = Colors.orange;
+        break;
+      case 'testDrive':
+        stageIcon = Icons.directions_car;
+        stageTitle = 'Test Drive';
+        stageColor = Colors.green;
+        break;
+      case 'report':
+        stageIcon = Icons.assignment;
+        stageTitle = 'Report';
+        stageColor = Colors.purple;
+        break;
+      default:
+        stageIcon = Icons.circle;
+        stageTitle = 'Activity';
+        stageColor = color;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white, // White background for light theme
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withAlpha(51), width: 1),
+        border: Border.all(color: stageColor.withAlpha(51), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    activity['title'] ?? 'Activity',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: Colors.black, // Black text
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: stageColor.withAlpha(26),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(stageIcon, size: 20, color: stageColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stageTitle,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        formatTimestamp(activity['createdAt']),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[700],
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        status == 'completed'
+                            ? Colors.green.withAlpha(26)
+                            : Colors.orange.withAlpha(26),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
+                      color:
+                          status == 'completed' ? Colors.green : Colors.orange,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    formatTimestamp(activity['timestamp']),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[700], // Darker gray for timestamp
-                      fontSize: 12,
+                ),
+              ],
+            ),
+            if (notes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                notes,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[800],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            if (images.isNotEmpty || requests.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  if (images.isNotEmpty) ...[
+                    Icon(Icons.image, size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${images.length} image${images.length != 1 ? 's' : ''}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
-                  ),
+                  ],
+                  if (images.isNotEmpty && requests.isNotEmpty) ...[
+                    const SizedBox(width: 16),
+                  ],
+                  if (requests.isNotEmpty) ...[
+                    Icon(Icons.list_alt, size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${requests.length} request${requests.length != 1 ? 's' : ''}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
                 ],
               ),
-            ),
+            ],
           ],
         ),
       ),

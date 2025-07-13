@@ -2,12 +2,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path/path.dart' as path;
+import 'aws_s3_service.dart';
 
 /// Service that handles all camera and image-related functionality.
-/// This includes picking images from gallery or camera and uploading to Firebase.
+/// This includes picking images from gallery or camera and uploading to S3.
 class CameraService {
   final ImagePicker _imagePicker = ImagePicker();
+  final AwsS3Service _s3Service = AwsS3Service();
 
   /// Picks a single image from the given source.
   /// Returns a File object representing the selected image or null if cancelled.
@@ -109,12 +111,13 @@ class CameraService {
     );
   }
 
-  /// Uploads a list of image files to Firebase Storage.
+  /// Uploads a list of image files to S3 Storage with compression.
   /// Returns a list of download URLs for successfully uploaded images.
-  Future<List<String>> uploadImagesToFirebase({
+  Future<List<String>> uploadImagesToS3({
     required List<File> imageFiles,
     required String storagePath,
     String? uniqueIdentifier,
+    bool compress = true,
   }) async {
     if (imageFiles.isEmpty) return [];
 
@@ -125,21 +128,18 @@ class CameraService {
         try {
           // Create a unique file name with timestamp and optional identifier
           String fileName =
-              '${uniqueIdentifier ?? 'image'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              '${uniqueIdentifier ?? 'image'}_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageFile.path)}';
+          String objectKey = '$storagePath/$fileName';
 
-          // Create a reference to the specified Firebase Storage bucket and path
-          Reference storageRef = FirebaseStorage.instance
-              .refFromURL('gs://gixat-app.firebasestorage.app')
-              .child('$storagePath/$fileName');
-
-          // Upload the file
-          await storageRef.putFile(imageFile);
-
-          // Get the download URL
-          String downloadUrl = await storageRef.getDownloadURL();
+          // Upload the file with compression
+          String? downloadUrl = await _s3Service.uploadFile(
+            file: imageFile,
+            objectKey: objectKey,
+            compress: compress,
+          );
 
           // Check if URL is valid
-          if (downloadUrl.startsWith('http')) {
+          if (downloadUrl != null && downloadUrl.startsWith('http')) {
             uploadedUrls.add(downloadUrl);
           }
         } catch (e) {
@@ -163,6 +163,19 @@ class CameraService {
       _showErrorSnackbar('Failed to upload images: $e');
       return [];
     }
+  }
+
+  /// Legacy method for backward compatibility
+  Future<List<String>> uploadImagesToFirebase({
+    required List<File> imageFiles,
+    required String storagePath,
+    String? uniqueIdentifier,
+  }) async {
+    return uploadImagesToS3(
+      imageFiles: imageFiles,
+      storagePath: storagePath,
+      uniqueIdentifier: uniqueIdentifier,
+    );
   }
 
   /// Helper method to show error snackbar

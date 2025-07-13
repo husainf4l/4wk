@@ -5,10 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/car.dart';
 import '../../models/session.dart';
 import '../../services/car_service.dart';
-import '../../services/session_service.dart';
+import '../../services/session/session_service.dart';
 import '../../utils/session_utils.dart';
 import '../sessions/session_details_screen.dart';
-import '../sessions/create_session_screen.dart';
+import '../sessions/old/create_session_screen.dart';
 import 'edit_car_screen.dart'; // Import for EditCarScreen
 
 class CarDetailsScreen extends StatefulWidget {

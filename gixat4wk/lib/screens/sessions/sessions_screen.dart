@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:gixat4wk/screens/sessions/create_session_screen.dart';
+import 'package:gixat4wk/screens/sessions/old/create_session_screen.dart';
 import 'package:gixat4wk/screens/sessions/session_details_screen.dart';
 import '../../controllers/auth_controller.dart';
 import '../../services/database_service.dart';

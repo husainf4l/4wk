@@ -4,13 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:gixat4wk/screens/add_car_screen.dart';
-import 'package:gixat4wk/screens/sessions/create_session_screen.dart';
+import 'package:gixat4wk/screens/sessions/old/create_session_screen.dart';
 import '../../models/client.dart';
 import '../../models/car.dart';
 import '../../models/session.dart';
 import '../../services/client_service.dart';
 import '../../services/car_service.dart';
-import '../../services/session_service.dart';
+import '../../services/session/session_service.dart';
 import '../../screens/sessions/session_details_screen.dart';
 import '../../utils/session_utils.dart';
 import '../../screens/cars/car_details_screen.dart'; // Import for CarDetailsScreen

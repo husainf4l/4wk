@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 import 'package:get/get.dart';
 import 'error_service.dart';
+import 'aws_s3_service.dart';
+import '../config/aws_config.dart';
 
 class ImageHandlingService {
   final ImagePicker _picker = ImagePicker();
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final AwsS3Service _s3Service = AwsS3Service();
 
   // Get error service for error logging
   final ErrorService _errorService = Get.find<ErrorService>(
@@ -107,11 +108,12 @@ class ImageHandlingService {
     );
   }
 
-  // Upload images to Firebase Storage
-  Future<List<String>> uploadImagesToFirebase({
+  // Upload images to S3 Storage with compression
+  Future<List<String>> uploadImagesToS3({
     required List<File> imageFiles,
     required String storagePath,
     String? uniqueIdentifier,
+    bool compress = true,
   }) async {
     if (imageFiles.isEmpty) return [];
 
@@ -122,22 +124,22 @@ class ImageHandlingService {
       final File imageFile = imageFiles[i];
       final String fileName =
           '${DateTime.now().millisecondsSinceEpoch}_${path.basename(imageFile.path)}';
-      final String fullPath = '$storagePath/${identifier}_$fileName';
+      final String objectKey = '$storagePath/${identifier}_$fileName';
 
       try {
-        final Reference ref = _storage.ref().child(fullPath);
-        final UploadTask uploadTask = ref.putFile(imageFile);
+        final String? downloadUrl = await _s3Service.uploadFile(
+          file: imageFile,
+          objectKey: objectKey,
+          compress: compress,
+        );
 
-        // Wait for upload to complete
-        final TaskSnapshot snapshot = await uploadTask;
-
-        // Get download URL
-        final String downloadUrl = await snapshot.ref.getDownloadURL();
-        uploadedUrls.add(downloadUrl);
+        if (downloadUrl != null) {
+          uploadedUrls.add(downloadUrl);
+        }
       } catch (e, stackTrace) {
         _errorService.logError(
           e,
-          context: 'ImageHandlingService.uploadImagesToFirebase',
+          context: 'ImageHandlingService.uploadImagesToS3',
           stackTrace: stackTrace,
         );
         // Continue with other uploads even if one fails
@@ -147,20 +149,36 @@ class ImageHandlingService {
     return uploadedUrls;
   }
 
-  // Delete image from Firebase Storage
-  Future<bool> deleteImageFromFirebase(String imageUrl) async {
+  // Legacy method for backward compatibility
+  Future<List<String>> uploadImagesToFirebase({
+    required List<File> imageFiles,
+    required String storagePath,
+    String? uniqueIdentifier,
+  }) async {
+    return uploadImagesToS3(
+      imageFiles: imageFiles,
+      storagePath: storagePath,
+      uniqueIdentifier: uniqueIdentifier,
+    );
+  }
+
+  // Delete image from S3 Storage
+  Future<bool> deleteImageFromS3(String imageUrl) async {
     try {
-      // Extract storage reference from the URL
-      final Reference ref = _storage.refFromURL(imageUrl);
-      await ref.delete();
-      return true;
+      final String objectKey = AWSConfig.extractKeyFromUrl(imageUrl);
+      return await _s3Service.deleteFile(objectKey);
     } catch (e, stackTrace) {
       _errorService.logError(
         e,
-        context: 'ImageHandlingService.deleteImageFromFirebase',
+        context: 'ImageHandlingService.deleteImageFromS3',
         stackTrace: stackTrace,
       );
       return false;
     }
+  }
+
+  // Legacy method for backward compatibility
+  Future<bool> deleteImageFromFirebase(String imageUrl) async {
+    return deleteImageFromS3(imageUrl);
   }
 }
