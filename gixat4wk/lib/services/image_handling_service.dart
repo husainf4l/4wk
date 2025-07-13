@@ -195,4 +195,141 @@ class ImageHandlingService {
       return imageFile; // Return original if compression fails
     }
   }
+
+  // Pick a single video from camera or gallery
+  Future<File?> pickSingleVideo({required ImageSource source}) async {
+    try {
+      final XFile? pickedFile = await _picker.pickVideo(
+        source: source,
+        maxDuration: const Duration(minutes: 5), // 5 minute limit
+      );
+
+      if (pickedFile != null) {
+        return File(pickedFile.path);
+      }
+      return null;
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ImageHandlingService.pickSingleVideo',
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  // Show dialog for selecting video source
+  void showVideoSourceOptions(
+    BuildContext context, {
+    required Function(File?) onVideoSelected,
+    Function(List<File>)? onMultipleVideosSelected,
+    bool allowMultiple = false,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.videocam),
+                  title: const Text('Record a video'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final File? video = await pickSingleVideo(
+                      source: ImageSource.camera,
+                    );
+                    onVideoSelected(video);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.video_library),
+                  title: const Text('Choose from gallery'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final File? video = await pickSingleVideo(
+                      source: ImageSource.gallery,
+                    );
+                    onVideoSelected(video);
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+    );
+  }
+
+  // Upload videos to S3 Storage
+  Future<List<String>> uploadVideosToS3({
+    required List<File> videoFiles,
+    required String storagePath,
+    String? uniqueIdentifier,
+  }) async {
+    if (videoFiles.isEmpty) return [];
+
+    final List<String> uploadedUrls = [];
+    final String identifier = uniqueIdentifier ?? const Uuid().v4();
+
+    for (int i = 0; i < videoFiles.length; i++) {
+      final File videoFile = videoFiles[i];
+      final String fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${path.basename(videoFile.path)}';
+      final String objectKey = '$storagePath/videos/${identifier}_$fileName';
+
+      try {
+        final String? downloadUrl = await _s3Service.uploadFile(
+          file: videoFile,
+          objectKey: objectKey,
+          compress: false, // Don't compress videos
+        );
+
+        if (downloadUrl != null) {
+          uploadedUrls.add(downloadUrl);
+        }
+      } catch (e, stackTrace) {
+        _errorService.logError(
+          e,
+          context: 'ImageHandlingService.uploadVideosToS3',
+          stackTrace: stackTrace,
+        );
+        // Continue with other videos even if one fails
+      }
+    }
+
+    return uploadedUrls;
+  }
+
+  // Upload single video to S3 Storage
+  Future<String?> uploadSingleVideoToS3({
+    required File videoFile,
+    required String storagePath,
+    String? uniqueIdentifier,
+  }) async {
+    final List<String> urls = await uploadVideosToS3(
+      videoFiles: [videoFile],
+      storagePath: storagePath,
+      uniqueIdentifier: uniqueIdentifier,
+    );
+    return urls.isNotEmpty ? urls.first : null;
+  }
+
+  // Delete video from S3 Storage
+  Future<bool> deleteVideoFromS3(String videoUrl) async {
+    try {
+      final String objectKey = AWSConfig.extractKeyFromUrl(videoUrl);
+      return await _s3Service.deleteFile(objectKey);
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ImageHandlingService.deleteVideoFromS3',
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
 }

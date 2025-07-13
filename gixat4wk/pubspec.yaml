@@ -39,6 +39,7 @@ dependencies:
   firebase_auth: ^5.5.3
   firebase_storage: ^12.4.5
   image_picker: ^1.1.2
+  video_player: ^2.8.6
   get: ^4.7.2
   google_sign_in: ^6.3.0
   sign_in_with_apple: ^7.0.1

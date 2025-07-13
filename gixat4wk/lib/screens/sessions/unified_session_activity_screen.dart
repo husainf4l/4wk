@@ -8,6 +8,7 @@ import '../../config/aws_config.dart';
 import '../../widgets/notes_editor_widget.dart';
 import '../../widgets/image_grid_widget.dart';
 import '../../widgets/request_list_widget.dart';
+import '../../widgets/video_player_widget.dart';
 
 class UnifiedSessionActivityScreen extends StatefulWidget {
   final String sessionId;
@@ -49,7 +50,10 @@ class _UnifiedSessionActivityScreenState
 
   // Common data
   List<String> _images = []; // Uploaded image URLs
+  List<String> _videos = []; // Uploaded video URLs
   List<File> _pendingImages = []; // Local images waiting to be uploaded
+  List<File> _pendingVideos = []; // Local videos waiting to be uploaded
+  List<String> _videosToDelete = []; // Track videos to delete from S3
   List<Map<String, dynamic>> _requests = [];
 
   // Stage-specific data
@@ -82,6 +86,16 @@ class _UnifiedSessionActivityScreenState
         }
       } catch (e) {
         debugPrint('Failed to cleanup compressed image: $e');
+      }
+    }
+
+    for (File video in _pendingVideos) {
+      try {
+        if (video.existsSync()) {
+          video.deleteSync();
+        }
+      } catch (e) {
+        debugPrint('Failed to cleanup video: $e');
       }
     }
   }
@@ -118,8 +132,11 @@ class _UnifiedSessionActivityScreenState
       _currentActivity = activity;
       _notesController.text = activity.notes;
       _images = List.from(activity.images);
+      _videos = List.from(activity.videos);
       _pendingImages
           .clear(); // Clear any pending images when loading existing activity
+      _pendingVideos
+          .clear(); // Clear any pending videos when loading existing activity
       _requests = List.from(activity.requests);
 
       // Populate stage-specific data
@@ -162,14 +179,15 @@ class _UnifiedSessionActivityScreenState
   }
 
   Future<void> _saveActivity() async {
-    if (_notesController.text.trim().isEmpty && _requests.isEmpty) {
-      Get.snackbar('Validation Error', 'Please add notes or requests');
-      return;
-    }
+    debugPrint('🔄 Save activity started for stage: ${widget.stage}');
 
     setState(() => _isSaving = true);
 
     try {
+      debugPrint(
+        '📤 Uploading ${_pendingImages.length} pending images and ${_pendingVideos.length} pending videos...',
+      );
+
       // Upload pending images first
       if (_pendingImages.isNotEmpty) {
         final String storagePath = _getStoragePath();
@@ -184,38 +202,110 @@ class _UnifiedSessionActivityScreenState
           _images.addAll(uploadedUrls);
           _pendingImages
               .clear(); // Clear pending images after successful upload
+          debugPrint('✅ Images uploaded successfully: ${uploadedUrls.length}');
         }
       }
 
+      // Upload pending videos
+      if (_pendingVideos.isNotEmpty) {
+        final String storagePath = _getStoragePath();
+        final List<String> uploadedVideoUrls = await _imageService
+            .uploadVideosToS3(
+              videoFiles: _pendingVideos,
+              storagePath: storagePath,
+              uniqueIdentifier: widget.sessionId,
+            );
+
+        if (uploadedVideoUrls.isNotEmpty) {
+          _videos.addAll(uploadedVideoUrls);
+          _pendingVideos
+              .clear(); // Clear pending videos after successful upload
+          debugPrint(
+            '✅ Videos uploaded successfully: ${uploadedVideoUrls.length}',
+          );
+        }
+      }
+
+      // Delete removed videos from S3
+      if (_videosToDelete.isNotEmpty) {
+        debugPrint('🗑️ Deleting ${_videosToDelete.length} videos from S3...');
+        for (String videoUrl in _videosToDelete) {
+          try {
+            await _imageService.deleteVideoFromS3(videoUrl);
+            debugPrint('✅ Deleted video: $videoUrl');
+          } catch (e) {
+            debugPrint('❌ Failed to delete video: $videoUrl, error: $e');
+          }
+        }
+        _videosToDelete.clear();
+      }
+
+      bool success = false;
       if (_currentActivity != null) {
+        debugPrint('🔄 Updating existing activity: ${_currentActivity!.id}');
         // Update existing activity
         final updatedActivity = _createActivityFromForm(_currentActivity!.id);
-        final success = await _unifiedService.updateActivity(
+        success = await _unifiedService.updateActivity(
           _currentActivity!.id,
           updatedActivity,
         );
-
         if (success) {
+          debugPrint('✅ Activity updated successfully');
           Get.snackbar('Success', '$_stageTitle updated successfully');
-          Get.back(result: true);
         } else {
+          debugPrint('❌ Failed to update activity');
           Get.snackbar('Error', 'Failed to update $_stageTitle');
         }
       } else {
+        debugPrint('🔄 Creating new activity...');
         // Create new activity
         final activity = _createActivityFromForm('');
         final activityId = await _unifiedService.createActivity(activity);
-
-        if (activityId != null) {
+        success = activityId != null;
+        if (success) {
+          debugPrint('✅ Activity created successfully with ID: $activityId');
           Get.snackbar('Success', '$_stageTitle saved successfully');
-          Get.back(result: true);
         } else {
+          debugPrint('❌ Failed to create activity');
           Get.snackbar('Error', 'Failed to save $_stageTitle');
         }
       }
+
+      debugPrint('🔄 Save operation completed. Success: $success');
+
+      // Navigate back to session details after a short delay
+      debugPrint('⏳ Waiting before navigation...');
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted) {
+        debugPrint('🚀 Navigating back with result: $success');
+        debugPrint(
+          '📍 Current route: ${ModalRoute.of(context)?.settings.name}',
+        );
+        debugPrint('📍 Can pop: ${Navigator.of(context).canPop()}');
+
+        // Try multiple navigation methods
+        try {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(success);
+            debugPrint('✅ Navigator.pop() executed');
+          } else {
+            debugPrint('⚠️ Cannot pop, trying Get.back()');
+            Get.back(result: success);
+          }
+        } catch (e) {
+          debugPrint('⚠️ Navigation failed: $e');
+          // Force back navigation
+          Get.until((route) => route.isFirst);
+        }
+      } else {
+        debugPrint('⚠️ Widget not mounted, skipping navigation');
+      }
     } catch (e) {
+      debugPrint('💥 Error during save: $e');
       Get.snackbar('Error', 'An error occurred: $e');
     } finally {
+      debugPrint('🏁 Save process finished, setting _isSaving to false');
       setState(() => _isSaving = false);
     }
   }
@@ -231,6 +321,7 @@ class _UnifiedSessionActivityScreenState
           notes: _notesController.text.trim(),
           requests: _requests,
           images: _images,
+          videos: _videos,
         );
 
       case ActivityStage.inspection:
@@ -242,6 +333,7 @@ class _UnifiedSessionActivityScreenState
           notes: _notesController.text.trim(),
           findings: _findings,
           images: _images,
+          videos: _videos,
           requests: _requests,
         );
 
@@ -254,6 +346,7 @@ class _UnifiedSessionActivityScreenState
           notes: _notesController.text.trim(),
           observations: _observations,
           images: _images,
+          videos: _videos,
           requests: _requests,
         );
 
@@ -266,6 +359,7 @@ class _UnifiedSessionActivityScreenState
           notes: _notesController.text.trim(),
           reportData: _reportData,
           images: _images,
+          videos: _videos,
           requests: _requests,
         );
     }
@@ -536,27 +630,69 @@ class _UnifiedSessionActivityScreenState
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Images', style: Theme.of(context).textTheme.titleLarge),
-            IconButton(
-              onPressed: _addImage,
-              icon: const Icon(Icons.add_photo_alternate),
+            Text('Media', style: Theme.of(context).textTheme.titleLarge),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: _addImage,
+                  icon: const Icon(Icons.add_photo_alternate),
+                  tooltip: 'Add Images',
+                ),
+                IconButton(
+                  onPressed: _addVideo,
+                  icon: const Icon(Icons.videocam),
+                  tooltip: 'Add Videos',
+                ),
+              ],
             ),
           ],
         ),
         const SizedBox(height: 8),
-        ImageGridWidget(
-          uploadedImageUrls: _images,
-          selectedImages: _pendingImages,
-          isEditing: true,
-          onRemoveUploadedImage: (index) async {
-            await _removeImage(index);
-          },
-          onRemoveSelectedImage: (index) {
-            setState(() {
-              _pendingImages.removeAt(index);
-            });
-          },
-        ),
+
+        // Images section
+        if (_images.isNotEmpty || _pendingImages.isNotEmpty) ...[
+          Text(
+            'Images (${_images.length + _pendingImages.length})',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          ImageGridWidget(
+            uploadedImageUrls: _images,
+            selectedImages: _pendingImages,
+            isEditing: true,
+            onRemoveUploadedImage: (index) async {
+              await _removeImage(index);
+            },
+            onRemoveSelectedImage: (index) {
+              setState(() {
+                _pendingImages.removeAt(index);
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Videos section
+        if (_videos.isNotEmpty || _pendingVideos.isNotEmpty) ...[
+          Text(
+            'Videos (${_videos.length + _pendingVideos.length})',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          _buildVideosList(),
+        ],
+
+        // Empty state
+        if (_images.isEmpty &&
+            _pendingImages.isEmpty &&
+            _videos.isEmpty &&
+            _pendingVideos.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('No media added yet. Tap + to add images or videos.'),
+            ),
+          ),
       ],
     );
   }
@@ -727,7 +863,7 @@ class _UnifiedSessionActivityScreenState
     );
   }
 
-  // Image methods
+  // Image and Video methods
   void _addImage() {
     _imageService.showImageSourceOptions(
       context,
@@ -741,6 +877,160 @@ class _UnifiedSessionActivityScreenState
       },
       allowMultiple: true,
     );
+  }
+
+  void _addVideo() {
+    _imageService.showVideoSourceOptions(
+      context,
+      onVideoSelected: (File? video) async {
+        if (video != null) {
+          await _addVideoFile(video);
+        }
+      },
+      onMultipleVideosSelected: (List<File> videos) async {
+        await _addMultipleVideoFiles(videos);
+      },
+      allowMultiple: false, // Single video for now
+    );
+  }
+
+  Future<void> _addVideoFile(File video) async {
+    setState(() {
+      _pendingVideos.add(video);
+    });
+  }
+
+  Future<void> _addMultipleVideoFiles(List<File> videos) async {
+    setState(() {
+      _pendingVideos.addAll(videos);
+    });
+  }
+
+  Widget _buildVideosList() {
+    // Convert existing video URLs to display items
+    List<Widget> videoWidgets = [];
+
+    // Add existing videos (URLs)
+    for (String videoUrl in _videos) {
+      videoWidgets.add(
+        Stack(
+          children: [
+            GestureDetector(
+              onTap: () => _openVideoPlayer(videoUrl: videoUrl),
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey),
+                ),
+                child: const Icon(
+                  Icons.play_circle_fill,
+                  size: 40,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              left: 4,
+              child: GestureDetector(
+                onTap: () => _removeExistingVideo(videoUrl),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 12, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Add pending videos (Files)
+    for (File video in _pendingVideos) {
+      videoWidgets.add(
+        Stack(
+          children: [
+            GestureDetector(
+              onTap: () => _openVideoPlayer(videoFile: video),
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey),
+                ),
+                child: const Icon(
+                  Icons.play_circle_fill,
+                  size: 40,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.orange,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.schedule,
+                  size: 12,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              left: 4,
+              child: GestureDetector(
+                onTap: () => _removePendingVideo(video),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 12, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (videoWidgets.isEmpty) return const SizedBox();
+
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: videoWidgets),
+      ],
+    );
+  }
+
+  void _removeExistingVideo(String videoUrl) {
+    setState(() {
+      _videos.remove(videoUrl);
+      _videosToDelete.add(videoUrl); // Store URL for deletion from S3
+    });
+  }
+
+  void _removePendingVideo(File video) {
+    setState(() {
+      _pendingVideos.remove(video);
+    });
   }
 
   Future<void> _compressAndAddImage(File image) async {
@@ -887,6 +1177,20 @@ class _UnifiedSessionActivityScreenState
           });
         });
       },
+    );
+  }
+
+  void _openVideoPlayer({String? videoUrl, File? videoFile}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => VideoPlayerWidget(
+              videoUrl: videoUrl,
+              videoFile: videoFile,
+              title: videoUrl != null ? 'Video' : 'Preview Video',
+            ),
+      ),
     );
   }
 }

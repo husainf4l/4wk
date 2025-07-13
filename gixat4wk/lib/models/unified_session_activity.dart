@@ -4,20 +4,21 @@ class UnifiedSessionActivity {
   final String clientId;
   final String carId;
   final String garageId;
-  
+
   // Stage/Type of activity
   final ActivityStage stage; // CLIENT_NOTES, INSPECTION, TEST_DRIVE, REPORT
-  
+
   // Common fields for all stages
   final String notes;
   final List<String> images;
+  final List<String> videos;
   final List<Map<String, dynamic>> requests;
-  
+
   // Stage-specific fields (optional)
   final List<Map<String, dynamic>>? findings; // For INSPECTION
   final List<Map<String, dynamic>>? observations; // For TEST_DRIVE
   final Map<String, dynamic>? reportData; // For REPORT
-  
+
   // Metadata
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -34,6 +35,7 @@ class UnifiedSessionActivity {
     required this.stage,
     required this.notes,
     required this.images,
+    required this.videos,
     required this.requests,
     this.findings,
     this.observations,
@@ -54,6 +56,7 @@ class UnifiedSessionActivity {
       'stage': stage.toString().split('.').last,
       'notes': notes,
       'images': images,
+      'videos': videos,
       'requests': requests,
       'status': status.toString().split('.').last,
       'createdAt': createdAt,
@@ -83,13 +86,16 @@ class UnifiedSessionActivity {
       ),
       notes: map['notes'] ?? '',
       images: List<String>.from(map['images'] ?? []),
+      videos: List<String>.from(map['videos'] ?? []),
       requests: List<Map<String, dynamic>>.from(map['requests'] ?? []),
-      findings: map['findings'] != null 
-          ? List<Map<String, dynamic>>.from(map['findings'])
-          : null,
-      observations: map['observations'] != null
-          ? List<Map<String, dynamic>>.from(map['observations'])
-          : null,
+      findings:
+          map['findings'] != null
+              ? List<Map<String, dynamic>>.from(map['findings'])
+              : null,
+      observations:
+          map['observations'] != null
+              ? List<Map<String, dynamic>>.from(map['observations'])
+              : null,
       reportData: map['reportData'],
       createdAt: map['createdAt']?.toDate() ?? DateTime.now(),
       updatedAt: map['updatedAt']?.toDate(),
@@ -117,6 +123,7 @@ class UnifiedSessionActivity {
     required String notes,
     required List<Map<String, dynamic>> requests,
     List<String> images = const [],
+    List<String> videos = const [],
     String? createdBy,
   }) {
     return UnifiedSessionActivity(
@@ -128,6 +135,7 @@ class UnifiedSessionActivity {
       stage: ActivityStage.clientNotes,
       notes: notes,
       images: images,
+      videos: videos,
       requests: requests,
       createdBy: createdBy,
     );
@@ -141,6 +149,7 @@ class UnifiedSessionActivity {
     required String notes,
     required List<Map<String, dynamic>> findings,
     List<String> images = const [],
+    List<String> videos = const [],
     List<Map<String, dynamic>> requests = const [],
     String? createdBy,
   }) {
@@ -153,6 +162,7 @@ class UnifiedSessionActivity {
       stage: ActivityStage.inspection,
       notes: notes,
       images: images,
+      videos: videos,
       requests: requests,
       findings: findings,
       createdBy: createdBy,
@@ -167,6 +177,7 @@ class UnifiedSessionActivity {
     required String notes,
     required List<Map<String, dynamic>> observations,
     List<String> images = const [],
+    List<String> videos = const [],
     List<Map<String, dynamic>> requests = const [],
     String? createdBy,
   }) {
@@ -179,6 +190,7 @@ class UnifiedSessionActivity {
       stage: ActivityStage.testDrive,
       notes: notes,
       images: images,
+      videos: videos,
       requests: requests,
       observations: observations,
       createdBy: createdBy,
@@ -193,6 +205,7 @@ class UnifiedSessionActivity {
     required String notes,
     required Map<String, dynamic> reportData,
     List<String> images = const [],
+    List<String> videos = const [],
     List<Map<String, dynamic>> requests = const [],
     String? createdBy,
   }) {
@@ -205,6 +218,7 @@ class UnifiedSessionActivity {
       stage: ActivityStage.report,
       notes: notes,
       images: images,
+      videos: videos,
       requests: requests,
       reportData: reportData,
       createdBy: createdBy,
@@ -215,6 +229,7 @@ class UnifiedSessionActivity {
   UnifiedSessionActivity copyWith({
     String? notes,
     List<String>? images,
+    List<String>? videos,
     List<Map<String, dynamic>>? requests,
     List<Map<String, dynamic>>? findings,
     List<Map<String, dynamic>>? observations,
@@ -232,6 +247,7 @@ class UnifiedSessionActivity {
       stage: stage,
       notes: notes ?? this.notes,
       images: images ?? this.images,
+      videos: videos ?? this.videos,
       requests: requests ?? this.requests,
       findings: findings ?? this.findings,
       observations: observations ?? this.observations,
@@ -245,15 +261,6 @@ class UnifiedSessionActivity {
   }
 }
 
-enum ActivityStage {
-  clientNotes,
-  inspection,
-  testDrive,
-  report,
-}
+enum ActivityStage { clientNotes, inspection, testDrive, report }
 
-enum ActivityStatus {
-  draft,
-  completed,
-  reviewed,
-}
+enum ActivityStatus { draft, completed, reviewed }

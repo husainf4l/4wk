@@ -4,19 +4,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:gixat4wk/firebase_options.dart';
 import 'controllers/auth_controller.dart';
-import 'controllers/enhanced_auth_controller.dart';
 import 'screens/login_page.dart';
 import 'screens/main_navigation_screen.dart'; // Import the new navigation screen
 import 'screens/garage_setup_screen.dart'; // Import the new garage setup screen
 import 'theme/app_theme.dart';
 import 'services/database_service.dart';
-import 'services/enhanced_database_service.dart';
-import 'services/enhanced_car_data_service.dart';
 import 'services/error_service.dart'; // Import the new error service
-import 'services/image_handling_service.dart'; // Import ImageHandlingService
-import 'services/chat_service.dart'; // Import ChatService
 import 'services/cache_service.dart'; // Import the new cache service
-// import 'services/aws_s3_service.dart'; // Import AWS S3 Service (disabled due to security)
 
 void main() async {
   // Ensure Flutter is initialized
@@ -81,15 +75,6 @@ Future<void> _initializeServices() async {
     // Connect DatabaseService with ErrorService
     databaseService.setErrorService(errorService);
 
-    // Initialize remaining services in parallel
-    final remainingServicesFuture = Future.wait([
-      _initializeImageHandlingService(),
-      Get.putAsync(() => ChatService().init()),
-    ]);
-
-    await remainingServicesFuture;
-
-    // Initialize AuthController after all services are ready
     Get.put(AuthController());
 
     // Preload critical data in background
@@ -99,19 +84,6 @@ Future<void> _initializeServices() async {
   } catch (e, stackTrace) {
     debugPrint('Error initializing services: $e');
     debugPrint('Stack trace: $stackTrace');
-    rethrow;
-  }
-}
-
-/// Initialize ImageHandlingService with proper error handling
-Future<ImageHandlingService> _initializeImageHandlingService() async {
-  try {
-    final service = ImageHandlingService();
-    Get.put(service);
-    return service;
-  } catch (e) {
-    debugPrint('Error initializing ImageHandlingService: $e');
-    // Return a fallback service or rethrow based on criticality
     rethrow;
   }
 }

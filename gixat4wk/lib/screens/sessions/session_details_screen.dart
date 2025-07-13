@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:gixat4wk/screens/main_navigation_screen.dart';
 import 'unified_session_activity_screen.dart';
+import 'report_screen.dart';
 import '../../models/session.dart';
 import '../../utils/session_utils.dart';
 import '../../models/unified_session_activity.dart';
@@ -17,9 +18,68 @@ class SessionDetailsScreen extends StatefulWidget {
 }
 
 class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
+  // Track which stages have data
+  Map<String, bool> stageHasData = {
+    'clientNotes': false,
+    'inspection': false,
+    'testDrive': false,
+    'report': false,
+  };
+
   @override
   void initState() {
     super.initState();
+    _checkStageData();
+  }
+
+  Future<void> _checkStageData() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('session_activities')
+              .where('sessionId', isEqualTo: widget.session.id)
+              .get();
+
+      final Map<String, bool> updatedStageData = {
+        'clientNotes': false,
+        'inspection': false,
+        'testDrive': false,
+        'report': false,
+      };
+
+      for (var doc in snapshot.docs) {
+        final activity = doc.data();
+        final stage = activity['stage'] as String?;
+
+        if (stage != null && updatedStageData.containsKey(stage)) {
+          // Check if activity has meaningful data
+          final notes = activity['notes'] as String? ?? '';
+          final images = activity['images'] as List? ?? [];
+          final requests = activity['requests'] as List? ?? [];
+          final findings = activity['findings'] as List? ?? [];
+          final observations = activity['observations'] as List? ?? [];
+          final reportData = activity['reportData'] as Map? ?? {};
+
+          // Consider stage as having data if any of these conditions are true
+          if (notes.trim().isNotEmpty ||
+              images.isNotEmpty ||
+              requests.isNotEmpty ||
+              findings.isNotEmpty ||
+              observations.isNotEmpty ||
+              reportData.isNotEmpty) {
+            updatedStageData[stage] = true;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          stageHasData = updatedStageData;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking stage data: $e');
+    }
   }
 
   @override
@@ -145,10 +205,10 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             icon: Icons.sticky_note_2_outlined,
                             title: 'Client Notes',
                             color: primaryColor,
-                            hasData: false,
-                            onTap: () {
+                            hasData: stageHasData['clientNotes'] ?? false,
+                            onTap: () async {
                               // Navigate to unified session activity screen for client notes
-                              Get.to(
+                              final result = await Get.to(
                                 () => UnifiedSessionActivityScreen(
                                   sessionId: widget.session.id,
                                   clientId: widget.session.clientId,
@@ -158,9 +218,14 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                                   sessionData: {
                                     'car': widget.session.car,
                                     'client': widget.session.client,
+                                    'status': widget.session.status,
                                   },
                                 ),
                               );
+                              // Refresh stage data when returning from activity screen
+                              if (result == true) {
+                                _checkStageData();
+                              }
                             },
                           ),
                         ),
@@ -170,8 +235,28 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             icon: Icons.search,
                             title: 'Inspection',
                             color: primaryColor,
-                            hasData: false,
-                            onTap: () {},
+                            hasData: stageHasData['inspection'] ?? false,
+                            onTap: () async {
+                              // Navigate to unified session activity screen for inspection
+                              final result = await Get.to(
+                                () => UnifiedSessionActivityScreen(
+                                  sessionId: widget.session.id,
+                                  clientId: widget.session.clientId,
+                                  carId: widget.session.car['id'] ?? '',
+                                  garageId: widget.session.garageId,
+                                  stage: ActivityStage.inspection,
+                                  sessionData: {
+                                    'car': widget.session.car,
+                                    'client': widget.session.client,
+                                    'status': widget.session.status,
+                                  },
+                                ),
+                              );
+                              // Refresh stage data when returning from activity screen
+                              if (result == true) {
+                                _checkStageData();
+                              }
+                            },
                           ),
                         ),
                       ],
@@ -184,18 +269,57 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             icon: Icons.directions_car,
                             title: 'Test Drive',
                             color: primaryColor,
-                            hasData: true,
-                            onTap: () {},
+                            hasData: stageHasData['testDrive'] ?? false,
+                            onTap: () async {
+                              // Navigate to unified session activity screen for test drive
+                              final result = await Get.to(
+                                () => UnifiedSessionActivityScreen(
+                                  sessionId: widget.session.id,
+                                  clientId: widget.session.clientId,
+                                  carId: widget.session.car['id'] ?? '',
+                                  garageId: widget.session.garageId,
+                                  stage: ActivityStage.testDrive,
+                                  sessionData: {
+                                    'car': widget.session.car,
+                                    'client': widget.session.client,
+                                    'status': widget.session.status,
+                                  },
+                                ),
+                              );
+                              // Refresh stage data when returning from activity screen
+                              if (result == true) {
+                                _checkStageData();
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _SessionBox(
-                            icon: Icons.directions_car,
+                            icon: Icons.assignment,
                             title: 'G Report',
                             color: primaryColor,
-                            hasData: widget.session.reportId != null,
-                            onTap: () {},
+                            hasData: stageHasData['report'] ?? false,
+                            onTap: () async {
+                              // Navigate to dedicated report screen
+                              final result = await Get.to(
+                                () => ReportScreen(
+                                  sessionId: widget.session.id,
+                                  clientId: widget.session.clientId,
+                                  carId: widget.session.car['id'] ?? '',
+                                  garageId: widget.session.garageId,
+                                  sessionData: {
+                                    'car': widget.session.car,
+                                    'client': widget.session.client,
+                                    'status': widget.session.status,
+                                  },
+                                ),
+                              );
+                              // Refresh stage data when returning from report screen
+                              if (result == true) {
+                                _checkStageData();
+                              }
+                            },
                           ),
                         ),
                       ],
