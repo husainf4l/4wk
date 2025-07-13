@@ -48,7 +48,8 @@ class _UnifiedSessionActivityScreenState
   final TextEditingController _notesController = TextEditingController();
 
   // Common data
-  List<String> _images = [];
+  List<String> _images = []; // Uploaded image URLs
+  List<File> _pendingImages = []; // Local images waiting to be uploaded
   List<Map<String, dynamic>> _requests = [];
 
   // Stage-specific data
@@ -68,7 +69,21 @@ class _UnifiedSessionActivityScreenState
   @override
   void dispose() {
     _notesController.dispose();
+    // Clean up pending compressed images
+    _cleanupPendingImages();
     super.dispose();
+  }
+
+  void _cleanupPendingImages() {
+    for (File image in _pendingImages) {
+      try {
+        if (image.existsSync() && image.path.contains('_compressed')) {
+          image.deleteSync();
+        }
+      } catch (e) {
+        debugPrint('Failed to cleanup compressed image: $e');
+      }
+    }
   }
 
   Future<void> _loadExistingActivity() async {
@@ -103,6 +118,8 @@ class _UnifiedSessionActivityScreenState
       _currentActivity = activity;
       _notesController.text = activity.notes;
       _images = List.from(activity.images);
+      _pendingImages
+          .clear(); // Clear any pending images when loading existing activity
       _requests = List.from(activity.requests);
 
       // Populate stage-specific data
@@ -153,6 +170,23 @@ class _UnifiedSessionActivityScreenState
     setState(() => _isSaving = true);
 
     try {
+      // Upload pending images first
+      if (_pendingImages.isNotEmpty) {
+        final String storagePath = _getStoragePath();
+        final List<String> uploadedUrls = await _imageService.uploadImagesToS3(
+          imageFiles: _pendingImages,
+          storagePath: storagePath,
+          uniqueIdentifier: widget.sessionId,
+          compress: false, // Already compressed
+        );
+
+        if (uploadedUrls.isNotEmpty) {
+          _images.addAll(uploadedUrls);
+          _pendingImages
+              .clear(); // Clear pending images after successful upload
+        }
+      }
+
       if (_currentActivity != null) {
         // Update existing activity
         final updatedActivity = _createActivityFromForm(_currentActivity!.id);
@@ -512,9 +546,15 @@ class _UnifiedSessionActivityScreenState
         const SizedBox(height: 8),
         ImageGridWidget(
           uploadedImageUrls: _images,
+          selectedImages: _pendingImages,
           isEditing: true,
           onRemoveUploadedImage: (index) async {
             await _removeImage(index);
+          },
+          onRemoveSelectedImage: (index) {
+            setState(() {
+              _pendingImages.removeAt(index);
+            });
           },
         ),
       ],
@@ -693,67 +733,70 @@ class _UnifiedSessionActivityScreenState
       context,
       onImageSelected: (File? image) async {
         if (image != null) {
-          await _uploadSingleImage(image);
+          await _compressAndAddImage(image);
         }
       },
       onMultipleImagesSelected: (List<File> images) async {
-        await _uploadMultipleImages(images);
+        await _compressAndAddMultipleImages(images);
       },
       allowMultiple: true,
     );
   }
 
-  Future<void> _uploadSingleImage(File image) async {
+  Future<void> _compressAndAddImage(File image) async {
     setState(() => _isSaving = true);
 
     try {
-      final String storagePath = _getStoragePath();
-      final List<String> uploadedUrls = await _imageService.uploadImagesToS3(
-        imageFiles: [image],
-        storagePath: storagePath,
-        uniqueIdentifier: widget.sessionId,
-        compress: true,
-      );
+      // Only compress the image, don't upload yet
+      final compressedImage = await _imageService.compressImage(image);
 
-      if (uploadedUrls.isNotEmpty) {
+      if (compressedImage != null) {
         setState(() {
-          _images.addAll(uploadedUrls);
+          _pendingImages.add(compressedImage);
         });
-        Get.snackbar('Success', 'Image uploaded successfully');
+        Get.snackbar('Success', 'Image prepared for upload');
       } else {
-        Get.snackbar('Error', 'Failed to upload image');
+        setState(() {
+          _pendingImages.add(image); // Use original if compression failed
+        });
+        Get.snackbar('Info', 'Image added (compression skipped)');
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to upload image: $e');
+      Get.snackbar('Error', 'Failed to process image: $e');
     } finally {
       setState(() => _isSaving = false);
     }
   }
 
-  Future<void> _uploadMultipleImages(List<File> images) async {
+  Future<void> _compressAndAddMultipleImages(List<File> images) async {
     if (images.isEmpty) return;
 
     setState(() => _isSaving = true);
 
     try {
-      final String storagePath = _getStoragePath();
-      final List<String> uploadedUrls = await _imageService.uploadImagesToS3(
-        imageFiles: images,
-        storagePath: storagePath,
-        uniqueIdentifier: widget.sessionId,
-        compress: true,
-      );
+      int successCount = 0;
+      for (File image in images) {
+        try {
+          // Only compress the image, don't upload yet
+          final compressedImage = await _imageService.compressImage(image);
 
-      if (uploadedUrls.isNotEmpty) {
-        setState(() {
-          _images.addAll(uploadedUrls);
-        });
-        Get.snackbar('Success', '${uploadedUrls.length} images uploaded successfully');
+          setState(() {
+            _pendingImages.add(compressedImage ?? image);
+          });
+          successCount++;
+        } catch (e) {
+          // Continue with other images even if one fails
+          debugPrint('Failed to process image: $e');
+        }
+      }
+
+      if (successCount > 0) {
+        Get.snackbar('Success', '$successCount images prepared for upload');
       } else {
-        Get.snackbar('Error', 'Failed to upload images');
+        Get.snackbar('Error', 'Failed to process images');
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to upload images: $e');
+      Get.snackbar('Error', 'Failed to process images: $e');
     } finally {
       setState(() => _isSaving = false);
     }
@@ -776,12 +819,14 @@ class _UnifiedSessionActivityScreenState
     if (index < 0 || index >= _images.length) return;
 
     final String imageUrl = _images[index];
-    
+
     // Show confirmation dialog
     final bool? shouldDelete = await Get.dialog<bool>(
       AlertDialog(
         title: const Text('Delete Image'),
-        content: const Text('Are you sure you want to delete this image? This action cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to delete this image? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
@@ -803,14 +848,17 @@ class _UnifiedSessionActivityScreenState
     try {
       // Remove from S3
       final bool deleted = await _imageService.deleteImageFromS3(imageUrl);
-      
+
       if (deleted) {
         setState(() {
           _images.removeAt(index);
         });
         Get.snackbar('Success', 'Image deleted successfully');
       } else {
-        Get.snackbar('Warning', 'Image removed from list but may still exist in storage');
+        Get.snackbar(
+          'Warning',
+          'Image removed from list but may still exist in storage',
+        );
         setState(() {
           _images.removeAt(index);
         });

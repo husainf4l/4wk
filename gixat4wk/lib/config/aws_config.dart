@@ -1,10 +1,11 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AWSConfig {
-  // AWS Configuration - Load from credentials file
-  static const String accessKeyId = 'AKIA46ALPORVVWYOFQOG';
-  static const String secretAccessKey =
-      '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';
-  static const String region = 'me-central-1';
-  static const String bucketName = '4wk-garage-media';
+  // AWS Configuration - Load from environment variables
+  static String get accessKeyId => dotenv.env['AWS_ACCESS_KEY_ID'] ?? '';
+  static String get secretAccessKey => dotenv.env['AWS_SECRET_ACCESS_KEY'] ?? '';
+  static String get region => dotenv.env['AWS_REGION'] ?? 'me-central-1';
+  static String get bucketName => dotenv.env['AWS_BUCKET_NAME'] ?? '4wk-garage-media';
 
   // S3 Configuration
   static const String imagesFolder = 'images';

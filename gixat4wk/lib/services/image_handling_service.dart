@@ -181,4 +181,18 @@ class ImageHandlingService {
   Future<bool> deleteImageFromFirebase(String imageUrl) async {
     return deleteImageFromS3(imageUrl);
   }
+
+  // Compress image without uploading
+  Future<File?> compressImage(File imageFile) async {
+    try {
+      return await _s3Service.compressImage(imageFile);
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ImageHandlingService.compressImage',
+        stackTrace: stackTrace,
+      );
+      return imageFile; // Return original if compression fails
+    }
+  }
 }

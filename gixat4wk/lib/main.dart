@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:gixat4wk/firebase_options.dart';
 import 'controllers/auth_controller.dart';
@@ -18,6 +19,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // Load environment variables
+    await dotenv.load(fileName: ".env");
+
     // Initialize Firebase with the correct options
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
