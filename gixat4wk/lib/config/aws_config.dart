@@ -1,7 +1,8 @@
 class AWSConfig {
-  // AWS Configuration - NEVER hardcode credentials in production!
-  static const String accessKeyId = ''; // Set via environment variables
-  static const String secretAccessKey = ''; // Set via environment variables
+  // AWS Configuration - Load from credentials file
+  static const String accessKeyId = 'AKIA46ALPORVVWYOFQOG';
+  static const String secretAccessKey =
+      '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';
   static const String region = 'me-central-1';
   static const String bucketName = '4wk-garage-media';
 

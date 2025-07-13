@@ -5,7 +5,6 @@ import 'package:gixat4wk/screens/main_navigation_screen.dart';
 import 'unified_session_activity_screen.dart';
 import '../../models/session.dart';
 import '../../utils/session_utils.dart';
-import '../../services/session/session_service.dart';
 import '../../models/unified_session_activity.dart';
 
 class SessionDetailsScreen extends StatefulWidget {
@@ -27,8 +26,6 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.primaryColor;
-
-    // Extract car details
     final carMake = widget.session.car['make'] ?? '';
     final carModel = widget.session.car['model'] ?? '';
     final plateNumber = widget.session.car['plateNumber'] ?? '';
