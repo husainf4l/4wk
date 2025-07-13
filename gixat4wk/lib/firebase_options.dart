@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -50,20 +47,30 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBnqTMHZwVD1ZsGkrnajoMDK9UDjPKzPZM',
-    appId: '1:33441701161:android:8c08c11c207b3469396b38',
-    messagingSenderId: '33441701161',
-    projectId: 'gixat4wk',
-    storageBucket: 'gixat4wk.firebasestorage.app',
+    apiKey: 'AIzaSyDtMYeeU9CSGXvd9HyV2vk2qttf-sdc66c',
+    appId: '1:274884115180:android:44e01dd364326f6d6103c9',
+    messagingSenderId: '274884115180',
+    projectId: 'gixat-4wk',
+    storageBucket: 'gixat-4wk.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCxJtDHyRQiJgsCtHKQraXGC3dXONHbKUk',
-    appId: '1:33441701161:ios:4be31ba4d392de7f396b38',
-    messagingSenderId: '33441701161',
-    projectId: 'gixat4wk',
-    storageBucket: 'gixat4wk.firebasestorage.app',
-    iosClientId: '33441701161-7rhh8oatdj10pcc3ppbbq50tctcena31.apps.googleusercontent.com',
+    apiKey: 'AIzaSyCRwvbM1EWCyFQjyPAIKnAqHTqf4P8wTAQ',
+    appId: '1:274884115180:ios:2a62865086d19ff36103c9',
+    messagingSenderId: '274884115180',
+    projectId: 'gixat-4wk',
+    storageBucket: 'gixat-4wk.firebasestorage.app',
     iosBundleId: 'ae.4wk.gixat4wk',
   );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDD9SzmI7jxnHDRn6ntQnb6AtNDtH35O3Y',
+    appId: '1:274884115180:web:5856d0d60de731cc6103c9',
+    messagingSenderId: '274884115180',
+    projectId: 'gixat-4wk',
+    authDomain: 'gixat-4wk.firebaseapp.com',
+    storageBucket: 'gixat-4wk.firebasestorage.app',
+    measurementId: 'G-MH66J6N42E',
+  );
+
 }

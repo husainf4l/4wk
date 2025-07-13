@@ -8,6 +8,9 @@ class ImageGridWidget extends StatelessWidget {
   final Function(int)? onRemoveUploadedImage;
   final Function(int)? onRemoveSelectedImage;
   final Function(String)? onImageTap;
+  final Map<String, double>?
+  uploadProgress; // File path -> progress (0.0 to 1.0)
+  final Map<String, bool>? uploadCompleted; // File path -> completed status
 
   const ImageGridWidget({
     super.key,
@@ -17,6 +20,8 @@ class ImageGridWidget extends StatelessWidget {
     this.onRemoveUploadedImage,
     this.onRemoveSelectedImage,
     this.onImageTap,
+    this.uploadProgress,
+    this.uploadCompleted,
   });
 
   @override
@@ -158,40 +163,116 @@ class ImageGridWidget extends StatelessWidget {
       ),
       itemCount: selectedImages.length,
       itemBuilder: (context, index) {
+        final File currentImage = selectedImages[index];
+        final String imagePath = currentImage.path;
+        final double? progress = uploadProgress?[imagePath];
+        final bool? isCompleted = uploadCompleted?[imagePath];
+
         return Stack(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.file(
-                selectedImages[index],
+                currentImage,
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
-            Positioned(
-              top: 0,
-              right: 0,
-              left: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.black.withAlpha(153), Colors.transparent],
+
+            // Upload progress overlay
+            if (progress != null && progress > 0.0 && isCompleted != true)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.black.withOpacity(0.6),
                   ),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.file_upload_outlined,
-                    color: Colors.white,
-                    size: 18,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          value: progress,
+                          strokeWidth: 3,
+                          backgroundColor: Colors.white.withOpacity(0.3),
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'Uploading...',
+                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-            if (isEditing && onRemoveSelectedImage != null)
+
+            // Upload completed overlay
+            if (isCompleted == true)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.green.withOpacity(0.8),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white, size: 32),
+                      SizedBox(height: 4),
+                      Text(
+                        'Uploaded!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Default upload icon when not uploading
+            if ((progress == null || progress == 0.0) && isCompleted != true)
+              Positioned(
+                top: 0,
+                right: 0,
+                left: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black.withAlpha(153), Colors.transparent],
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.file_upload_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+
+            if (isEditing &&
+                onRemoveSelectedImage != null &&
+                isCompleted != true)
               Positioned(
                 top: 4,
                 right: 4,

@@ -3,21 +3,21 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>33441701161-7rhh8oatdj10pcc3ppbbq50tctcena31.apps.googleusercontent.com</string>
+	<string>274884115180-vq8dp4svu0sftfppic2ktc6okm4bqdpm.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.33441701161-7rhh8oatdj10pcc3ppbbq50tctcena31</string>
+	<string>com.googleusercontent.apps.274884115180-vq8dp4svu0sftfppic2ktc6okm4bqdpm</string>
 	<key>API_KEY</key>
-	<string>AIzaSyCxJtDHyRQiJgsCtHKQraXGC3dXONHbKUk</string>
+	<string>AIzaSyCRwvbM1EWCyFQjyPAIKnAqHTqf4P8wTAQ</string>
 	<key>GCM_SENDER_ID</key>
-	<string>33441701161</string>
+	<string>274884115180</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>ae.4wk.gixat4wk</string>
 	<key>PROJECT_ID</key>
-	<string>gixat4wk</string>
+	<string>gixat-4wk</string>
 	<key>STORAGE_BUCKET</key>
-	<string>gixat4wk.firebasestorage.app</string>
+	<string>gixat-4wk.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:33441701161:ios:4be31ba4d392de7f396b38</string>
+	<string>1:274884115180:ios:2a62865086d19ff36103c9</string>
 </dict>
 </plist>

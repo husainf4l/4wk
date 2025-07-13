@@ -44,6 +44,14 @@ class _UnifiedSessionActivityScreenState
 
   bool _isLoading = false;
   bool _isSaving = false;
+  bool _isAddingImage = false; // Prevent rapid image additions
+  double _uploadProgress = 0.0;
+  String _uploadStatus = '';
+
+  // Track individual image upload progress
+  Map<String, double> _imageUploadProgress =
+      {}; // File path -> progress (0.0 to 1.0)
+  Map<String, bool> _imageUploadCompleted = {}; // File path -> completed status
 
   // Form controllers
   final TextEditingController _notesController = TextEditingController();
@@ -75,6 +83,9 @@ class _UnifiedSessionActivityScreenState
     _notesController.dispose();
     // Clean up pending compressed images
     _cleanupPendingImages();
+    // Clear progress tracking
+    _imageUploadProgress.clear();
+    _imageUploadCompleted.clear();
     super.dispose();
   }
 
@@ -181,53 +192,132 @@ class _UnifiedSessionActivityScreenState
   Future<void> _saveActivity() async {
     debugPrint('🔄 Save activity started for stage: ${widget.stage}');
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _uploadProgress = 0.0;
+      _uploadStatus = 'Preparing to save...';
+    });
 
     try {
-      debugPrint(
-        '📤 Uploading ${_pendingImages.length} pending images and ${_pendingVideos.length} pending videos...',
-      );
-
-      // Upload pending images first
+      // Step 1: Upload any remaining pending images (if any)
       if (_pendingImages.isNotEmpty) {
-        final String storagePath = _getStoragePath();
-        final List<String> uploadedUrls = await _imageService.uploadImagesToS3(
-          imageFiles: _pendingImages,
-          storagePath: storagePath,
-          uniqueIdentifier: widget.sessionId,
-          compress: false, // Already compressed
-        );
+        setState(() {
+          _uploadStatus =
+              'Uploading remaining ${_pendingImages.length} images...';
+          _uploadProgress = 0.1;
+        });
 
-        if (uploadedUrls.isNotEmpty) {
-          _images.addAll(uploadedUrls);
-          _pendingImages
-              .clear(); // Clear pending images after successful upload
-          debugPrint('✅ Images uploaded successfully: ${uploadedUrls.length}');
-        }
-      }
-
-      // Upload pending videos
-      if (_pendingVideos.isNotEmpty) {
         final String storagePath = _getStoragePath();
-        final List<String> uploadedVideoUrls = await _imageService
-            .uploadVideosToS3(
-              videoFiles: _pendingVideos,
-              storagePath: storagePath,
-              uniqueIdentifier: widget.sessionId,
+
+        try {
+          // Only upload images that haven't been uploaded yet
+          final List<File> remainingImages =
+              _pendingImages.where((image) {
+                return !(_imageUploadCompleted[image.path] ?? false);
+              }).toList();
+
+          if (remainingImages.isNotEmpty) {
+            debugPrint(
+              '📤 Uploading ${remainingImages.length} remaining images...',
             );
 
-        if (uploadedVideoUrls.isNotEmpty) {
-          _videos.addAll(uploadedVideoUrls);
-          _pendingVideos
-              .clear(); // Clear pending videos after successful upload
-          debugPrint(
-            '✅ Videos uploaded successfully: ${uploadedVideoUrls.length}',
-          );
+            // Start progress animation for remaining images
+            for (File image in remainingImages) {
+              _animateImageProgress(image.path);
+            }
+
+            // Use PARALLEL batch upload for maximum speed
+            final List<String> uploadedUrls = await _imageService
+                .uploadImagesToS3(
+                  imageFiles: remainingImages,
+                  storagePath: storagePath,
+                  uniqueIdentifier: widget.sessionId,
+                  compress: false, // Already compressed
+                  maxConcurrency: 6, // High concurrency for maximum speed
+                );
+
+            if (uploadedUrls.isNotEmpty) {
+              _images.addAll(uploadedUrls);
+              debugPrint('✅ Remaining images uploaded: ${uploadedUrls.length}');
+            }
+          } else {
+            debugPrint('ℹ️ All images already uploaded in background');
+          }
+
+          // Clear all pending images since they're all handled
+          _pendingImages.clear();
+
+          setState(() {
+            _uploadProgress = 0.4;
+            _uploadStatus = 'All images ready!';
+          });
+
+          // Clear progress tracking
+          Future.delayed(const Duration(milliseconds: 500), () {
+            setState(() {
+              _imageUploadProgress.clear();
+              _imageUploadCompleted.clear();
+            });
+          });
+        } catch (e) {
+          debugPrint('Failed to upload remaining images: $e');
+          setState(() {
+            _uploadStatus = 'Some images failed to upload';
+          });
         }
+
+        // Show feedback briefly
+        await Future.delayed(const Duration(milliseconds: 300));
       }
 
-      // Delete removed videos from S3
+      // Step 2: Upload pending videos (if any)
+      if (_pendingVideos.isNotEmpty) {
+        setState(() {
+          _uploadStatus = 'Uploading ${_pendingVideos.length} videos...';
+          _uploadProgress = 0.5;
+        });
+
+        final String storagePath = _getStoragePath();
+
+        try {
+          // Use parallel batch upload for videos
+          final List<String> uploadedVideoUrls = await _imageService
+              .uploadVideosToS3(
+                videoFiles: _pendingVideos,
+                storagePath: storagePath,
+                uniqueIdentifier: widget.sessionId,
+                maxConcurrency: 4, // Increased concurrency for faster uploads
+              );
+
+          if (uploadedVideoUrls.isNotEmpty) {
+            _videos.addAll(uploadedVideoUrls);
+            _pendingVideos.clear();
+            debugPrint(
+              '✅ Batch videos uploaded successfully: ${uploadedVideoUrls.length}',
+            );
+            setState(() {
+              _uploadProgress = 0.7;
+              _uploadStatus = '${uploadedVideoUrls.length} videos uploaded!';
+            });
+          }
+        } catch (e) {
+          debugPrint('Failed to upload video batch: $e');
+          setState(() {
+            _uploadStatus = 'Some videos failed to upload';
+          });
+        }
+
+        // Show success feedback briefly
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+
+      // Step 3: Delete removed videos from S3
       if (_videosToDelete.isNotEmpty) {
+        setState(() {
+          _uploadStatus = 'Cleaning up removed videos...';
+          _uploadProgress = 0.8;
+        });
+
         debugPrint('🗑️ Deleting ${_videosToDelete.length} videos from S3...');
         for (String videoUrl in _videosToDelete) {
           try {
@@ -240,10 +330,15 @@ class _UnifiedSessionActivityScreenState
         _videosToDelete.clear();
       }
 
+      // Step 4: Save activity data
+      setState(() {
+        _uploadStatus = 'Saving activity data...';
+        _uploadProgress = 0.9;
+      });
+
       bool success = false;
       if (_currentActivity != null) {
         debugPrint('🔄 Updating existing activity: ${_currentActivity!.id}');
-        // Update existing activity
         final updatedActivity = _createActivityFromForm(_currentActivity!.id);
         success = await _unifiedService.updateActivity(
           _currentActivity!.id,
@@ -251,40 +346,39 @@ class _UnifiedSessionActivityScreenState
         );
         if (success) {
           debugPrint('✅ Activity updated successfully');
-          Get.snackbar('Success', '$_stageTitle updated successfully');
         } else {
           debugPrint('❌ Failed to update activity');
-          Get.snackbar('Error', 'Failed to update $_stageTitle');
         }
       } else {
         debugPrint('🔄 Creating new activity...');
-        // Create new activity
         final activity = _createActivityFromForm('');
         final activityId = await _unifiedService.createActivity(activity);
         success = activityId != null;
         if (success) {
           debugPrint('✅ Activity created successfully with ID: $activityId');
-          Get.snackbar('Success', '$_stageTitle saved successfully');
         } else {
           debugPrint('❌ Failed to create activity');
-          Get.snackbar('Error', 'Failed to save $_stageTitle');
         }
+      }
+
+      setState(() {
+        _uploadProgress = 1.0;
+        _uploadStatus = success ? 'Saved successfully!' : 'Save failed!';
+      });
+
+      if (success) {
+        Get.snackbar('Success', '$_stageTitle saved successfully');
+      } else {
+        Get.snackbar('Error', 'Failed to save $_stageTitle');
       }
 
       debugPrint('🔄 Save operation completed. Success: $success');
 
-      // Navigate back to session details after a short delay
-      debugPrint('⏳ Waiting before navigation...');
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Navigate back after a short delay
+      await Future.delayed(const Duration(milliseconds: 800));
 
       if (mounted) {
         debugPrint('🚀 Navigating back with result: $success');
-        debugPrint(
-          '📍 Current route: ${ModalRoute.of(context)?.settings.name}',
-        );
-        debugPrint('📍 Can pop: ${Navigator.of(context).canPop()}');
-
-        // Try multiple navigation methods
         try {
           if (Navigator.of(context).canPop()) {
             Navigator.of(context).pop(success);
@@ -295,18 +389,22 @@ class _UnifiedSessionActivityScreenState
           }
         } catch (e) {
           debugPrint('⚠️ Navigation failed: $e');
-          // Force back navigation
           Get.until((route) => route.isFirst);
         }
-      } else {
-        debugPrint('⚠️ Widget not mounted, skipping navigation');
       }
     } catch (e) {
       debugPrint('💥 Error during save: $e');
+      setState(() {
+        _uploadStatus = 'Error occurred!';
+      });
       Get.snackbar('Error', 'An error occurred: $e');
     } finally {
-      debugPrint('🏁 Save process finished, setting _isSaving to false');
-      setState(() => _isSaving = false);
+      debugPrint('🏁 Save process finished');
+      setState(() {
+        _isSaving = false;
+        _uploadProgress = 0.0;
+        _uploadStatus = '';
+      });
     }
   }
 
@@ -385,48 +483,92 @@ class _UnifiedSessionActivityScreenState
           ],
         ),
         actions: [
+          if (_isSaving && _uploadStatus.isNotEmpty)
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Center(
+                  child: Text(
+                    _uploadStatus,
+                    style: const TextStyle(fontSize: 11),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+            ),
           TextButton(
             onPressed: _isSaving ? null : _saveActivity,
             child:
                 _isSaving
-                    ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            value: _uploadProgress > 0 ? _uploadProgress : null,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (_uploadProgress > 0) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '${(_uploadProgress * 100).toInt()}%',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
                     )
-                    : const Text('Save'),
+                    : const Text(
+                      'Save',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Session context (optional)
-            if (widget.sessionData != null) _buildSessionContext(),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Session context (optional)
+                if (widget.sessionData != null) _buildSessionContext(),
 
-            // Notes section (always visible)
-            _buildNotesSection(),
+                // Notes section (always visible)
+                _buildNotesSection(),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // Stage-specific sections
-            ..._buildStageSpecificSections(),
+                // Stage-specific sections
+                ..._buildStageSpecificSections(),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // Images section (always visible)
-            _buildImagesSection(),
+                // Images section (always visible)
+                _buildImagesSection(),
 
-            const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-            // Requests section (always visible)
-            _buildRequestsSection(),
+                // Requests section (always visible)
+                _buildRequestsSection(),
 
-            const SizedBox(height: 100), // Extra space for FAB
-          ],
-        ),
+                const SizedBox(height: 100), // Extra space for FAB
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -660,12 +802,18 @@ class _UnifiedSessionActivityScreenState
             uploadedImageUrls: _images,
             selectedImages: _pendingImages,
             isEditing: true,
+            uploadProgress: _imageUploadProgress,
+            uploadCompleted: _imageUploadCompleted,
             onRemoveUploadedImage: (index) async {
               await _removeImage(index);
             },
             onRemoveSelectedImage: (index) {
               setState(() {
+                final File imageToRemove = _pendingImages[index];
                 _pendingImages.removeAt(index);
+                // Clean up progress tracking
+                _imageUploadProgress.remove(imageToRemove.path);
+                _imageUploadCompleted.remove(imageToRemove.path);
               });
             },
           ),
@@ -865,18 +1013,35 @@ class _UnifiedSessionActivityScreenState
 
   // Image and Video methods
   void _addImage() {
+    // Prevent rapid successive calls
+    if (_isAddingImage) {
+      debugPrint('Image addition already in progress, ignoring request');
+      return;
+    }
+
+    setState(() => _isAddingImage = true);
+
     _imageService.showImageSourceOptions(
       context,
       onImageSelected: (File? image) async {
         if (image != null) {
           await _compressAndAddImage(image);
         }
+        setState(() => _isAddingImage = false);
       },
       onMultipleImagesSelected: (List<File> images) async {
         await _compressAndAddMultipleImages(images);
+        setState(() => _isAddingImage = false);
       },
       allowMultiple: true,
     );
+
+    // Reset flag after a short delay in case dialog was cancelled
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _isAddingImage = false);
+      }
+    });
   }
 
   void _addVideo() {
@@ -1034,61 +1199,159 @@ class _UnifiedSessionActivityScreenState
   }
 
   Future<void> _compressAndAddImage(File image) async {
-    setState(() => _isSaving = true);
+    // Add image immediately to UI with compression status
+    setState(() {
+      _pendingImages.add(image);
+      // Initialize progress tracking for the new image (starting with compression)
+      _imageUploadProgress[image.path] = 0.0;
+      _imageUploadCompleted[image.path] = false;
+    });
 
-    try {
-      // Only compress the image, don't upload yet
-      final compressedImage = await _imageService.compressImage(image);
-
-      if (compressedImage != null) {
-        setState(() {
-          _pendingImages.add(compressedImage);
-        });
-        Get.snackbar('Success', 'Image prepared for upload');
-      } else {
-        setState(() {
-          _pendingImages.add(image); // Use original if compression failed
-        });
-        Get.snackbar('Info', 'Image added (compression skipped)');
-      }
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to process image: $e');
-    } finally {
-      setState(() => _isSaving = false);
-    }
+    // Start background compression and upload
+    _compressAndUploadInBackground(image);
   }
 
   Future<void> _compressAndAddMultipleImages(List<File> images) async {
     if (images.isEmpty) return;
 
-    setState(() => _isSaving = true);
-
-    try {
-      int successCount = 0;
+    // Add all images immediately to UI
+    setState(() {
+      _pendingImages.addAll(images);
+      // Initialize progress tracking for all new images
       for (File image in images) {
-        try {
-          // Only compress the image, don't upload yet
-          final compressedImage = await _imageService.compressImage(image);
-
-          setState(() {
-            _pendingImages.add(compressedImage ?? image);
-          });
-          successCount++;
-        } catch (e) {
-          // Continue with other images even if one fails
-          debugPrint('Failed to process image: $e');
-        }
+        _imageUploadProgress[image.path] = 0.0;
+        _imageUploadCompleted[image.path] = false;
       }
+    });
 
-      if (successCount > 0) {
-        Get.snackbar('Success', '$successCount images prepared for upload');
+    // Process each image in background
+    for (File image in images) {
+      _compressAndUploadInBackground(image);
+    }
+
+    Get.snackbar(
+      'Images Added',
+      '${images.length} images are being processed in background',
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  // Background compression and upload for seamless UX
+  Future<void> _compressAndUploadInBackground(File originalImage) async {
+    try {
+      final String imagePath = originalImage.path;
+
+      // Step 1: Start compression animation
+      setState(() {
+        _imageUploadProgress[imagePath] = 0.1; // Show compression starting
+      });
+
+      // Step 2: Compress image
+      final compressedImage = await _imageService.compressImage(originalImage);
+      final File imageToUpload = compressedImage ?? originalImage;
+
+      setState(() {
+        _imageUploadProgress[imagePath] = 0.3; // Compression complete
+      });
+
+      // Step 3: Start upload animation
+      _animateImageProgress(imagePath);
+
+      // Step 4: Upload to S3 using batch upload with single image
+      final String storagePath = _getStoragePath();
+
+      final List<String> uploadedUrls = await _imageService.uploadImagesToS3(
+        imageFiles: [imageToUpload],
+        storagePath: storagePath,
+        uniqueIdentifier: widget.sessionId,
+        compress: false, // Already compressed
+        maxConcurrency: 1,
+      );
+
+      final String? uploadedUrl =
+          uploadedUrls.isNotEmpty ? uploadedUrls.first : null;
+
+      if (uploadedUrl != null) {
+        // Success: Move from pending to uploaded
+        setState(() {
+          // Remove from pending list
+          final int pendingIndex = _pendingImages.indexWhere(
+            (f) => f.path == imagePath,
+          );
+          if (pendingIndex != -1) {
+            _pendingImages.removeAt(pendingIndex);
+          }
+
+          // Add to uploaded list
+          _images.add(uploadedUrl);
+
+          // Mark as completed
+          _imageUploadProgress[imagePath] = 1.0;
+          _imageUploadCompleted[imagePath] = true;
+        });
+
+        // Show success feedback
+        if (compressedImage != null) {
+          final originalSize = await originalImage.length();
+          final compressedSize = await imageToUpload.length();
+          final reductionPercent =
+              ((originalSize - compressedSize) / originalSize * 100).round();
+
+          debugPrint(
+            '✅ Image uploaded successfully. Size reduced by $reductionPercent%',
+          );
+        } else {
+          debugPrint('✅ Image uploaded successfully (no compression)');
+        }
+
+        // Clean up progress tracking after delay
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          if (mounted) {
+            setState(() {
+              _imageUploadProgress.remove(imagePath);
+              _imageUploadCompleted.remove(imagePath);
+            });
+          }
+        });
+
+        // Clean up compressed file if different from original
+        if (compressedImage != null &&
+            compressedImage.path != originalImage.path) {
+          try {
+            await compressedImage.delete();
+          } catch (e) {
+            debugPrint('Failed to cleanup compressed file: $e');
+          }
+        }
       } else {
-        Get.snackbar('Error', 'Failed to process images');
+        // Upload failed
+        setState(() {
+          _imageUploadProgress[imagePath] = 0.0;
+          _imageUploadCompleted[imagePath] = false;
+        });
+
+        debugPrint('❌ Failed to upload image');
+        Get.snackbar(
+          'Upload Failed',
+          'Failed to upload image. Will retry on save.',
+          backgroundColor: Colors.orange.withOpacity(0.8),
+          duration: const Duration(seconds: 3),
+        );
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to process images: $e');
-    } finally {
-      setState(() => _isSaving = false);
+      // Error occurred
+      setState(() {
+        _imageUploadProgress[originalImage.path] = 0.0;
+        _imageUploadCompleted[originalImage.path] = false;
+      });
+
+      debugPrint('❌ Background upload error: $e');
+      Get.snackbar(
+        'Processing Error',
+        'Image added but will be processed on save.',
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 
@@ -1192,5 +1455,19 @@ class _UnifiedSessionActivityScreenState
             ),
       ),
     );
+  }
+
+  // Animate image upload progress for visual feedback
+  void _animateImageProgress(String imagePath) async {
+    // Animate from 10% to 90% over 2 seconds
+    for (double progress = 0.1; progress <= 0.9; progress += 0.15) {
+      if (_imageUploadProgress.containsKey(imagePath) &&
+          _imageUploadCompleted[imagePath] != true) {
+        setState(() {
+          _imageUploadProgress[imagePath] = progress;
+        });
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+    }
   }
 }

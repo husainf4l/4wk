@@ -69,10 +69,21 @@ class _AddClientScreenState extends State<AddClientScreen> {
         );
         return;
       }
+
+      // Format phone number with country code for WhatsApp
+      String formattedPhone = _phone;
+      final countryCode = _selectedCountryCode.replaceAll(
+        '+',
+        '',
+      ); // Remove + sign
+      if (countryCode.isNotEmpty && !_phone.startsWith(countryCode)) {
+        formattedPhone = countryCode + _phone;
+      }
+
       final newClient = Client(
         id: '',
         name: _name,
-        phone: _phone,
+        phone: formattedPhone,
         address: Address(city: _city, country: _country),
         garageId: garageId,
       );
@@ -91,7 +102,7 @@ class _AddClientScreenState extends State<AddClientScreen> {
           arguments: {
             'clientId': clientId,
             'clientName': _name,
-            'clientPhoneNumber': _phone,
+            'clientPhoneNumber': formattedPhone,
           },
           transition: Transition.rightToLeft,
         );

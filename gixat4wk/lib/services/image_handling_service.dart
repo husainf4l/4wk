@@ -12,6 +12,9 @@ class ImageHandlingService {
   final ImagePicker _picker = ImagePicker();
   final AwsS3Service _s3Service = AwsS3Service();
 
+  // Prevent concurrent image picker operations
+  bool _isPickerActive = false;
+
   // Get error service for error logging
   final ErrorService _errorService = Get.find<ErrorService>(
     tag: 'ErrorService',
@@ -19,6 +22,14 @@ class ImageHandlingService {
 
   // Pick a single image from camera or gallery
   Future<File?> pickSingleImage({required ImageSource source}) async {
+    // Prevent concurrent operations
+    if (_isPickerActive) {
+      debugPrint('ImagePicker already active, ignoring request');
+      return null;
+    }
+
+    _isPickerActive = true;
+
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
@@ -36,11 +47,21 @@ class ImageHandlingService {
         stackTrace: stackTrace,
       );
       rethrow;
+    } finally {
+      _isPickerActive = false;
     }
   }
 
   // Pick multiple images from gallery
   Future<List<File>> pickMultipleImages() async {
+    // Prevent concurrent operations
+    if (_isPickerActive) {
+      debugPrint('ImagePicker already active, ignoring request');
+      return [];
+    }
+
+    _isPickerActive = true;
+
     try {
       final List<XFile> pickedFiles = await _picker.pickMultiImage(
         imageQuality: 80,
@@ -54,6 +75,8 @@ class ImageHandlingService {
         stackTrace: stackTrace,
       );
       rethrow;
+    } finally {
+      _isPickerActive = false;
     }
   }
 
@@ -108,45 +131,85 @@ class ImageHandlingService {
     );
   }
 
-  // Upload images to S3 Storage with compression
+  // Upload images to S3 Storage with compression and parallel processing
   Future<List<String>> uploadImagesToS3({
     required List<File> imageFiles,
     required String storagePath,
     String? uniqueIdentifier,
     bool compress = true,
+    int maxConcurrency = 6, // Increased default concurrency for speed
   }) async {
     if (imageFiles.isEmpty) return [];
 
-    final List<String> uploadedUrls = [];
     final String identifier = uniqueIdentifier ?? const Uuid().v4();
 
-    for (int i = 0; i < imageFiles.length; i++) {
-      final File imageFile = imageFiles[i];
-      final String fileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${path.basename(imageFile.path)}';
-      final String objectKey = '$storagePath/${identifier}_$fileName';
+    // Process uploads in batches for optimal performance
+    List<String> allUrls = [];
+
+    for (int i = 0; i < imageFiles.length; i += maxConcurrency) {
+      final int end = (i + maxConcurrency).clamp(0, imageFiles.length);
+      final List<File> batch = imageFiles.sublist(i, end);
+
+      // Upload batch in parallel
+      final List<Future<String?>> uploadFutures =
+          batch.asMap().entries.map((entry) {
+            final int batchIndex = entry.key;
+            final File imageFile = entry.value;
+            final String fileName =
+                '${DateTime.now().millisecondsSinceEpoch + batchIndex}_${path.basename(imageFile.path)}';
+            final String objectKey = '$storagePath/${identifier}_$fileName';
+
+            return _uploadSingleImage(imageFile, objectKey, compress);
+          }).toList();
 
       try {
-        final String? downloadUrl = await _s3Service.uploadFile(
-          file: imageFile,
-          objectKey: objectKey,
-          compress: compress,
-        );
+        final List<String?> batchResults = await Future.wait(uploadFutures);
 
-        if (downloadUrl != null) {
-          uploadedUrls.add(downloadUrl);
-        }
+        // Filter out null results and add successful uploads
+        final List<String> successfulUrls =
+            batchResults.where((url) => url != null).cast<String>().toList();
+
+        allUrls.addAll(successfulUrls);
+
+        debugPrint(
+          'Batch ${(i ~/ maxConcurrency) + 1}: ${successfulUrls.length}/${batch.length} uploads successful',
+        );
       } catch (e, stackTrace) {
         _errorService.logError(
           e,
-          context: 'ImageHandlingService.uploadImagesToS3',
+          context:
+              'ImageHandlingService.uploadImagesToS3 - batch ${(i ~/ maxConcurrency) + 1}',
           stackTrace: stackTrace,
         );
-        // Continue with other uploads even if one fails
       }
     }
 
-    return uploadedUrls;
+    debugPrint(
+      'Total uploads completed: ${allUrls.length}/${imageFiles.length}',
+    );
+    return allUrls;
+  }
+
+  // Helper method for single image upload
+  Future<String?> _uploadSingleImage(
+    File imageFile,
+    String objectKey,
+    bool compress,
+  ) async {
+    try {
+      return await _s3Service.uploadFile(
+        file: imageFile,
+        objectKey: objectKey,
+        compress: compress,
+      );
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ImageHandlingService._uploadSingleImage',
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
   }
 
   // Legacy method for backward compatibility
@@ -198,6 +261,14 @@ class ImageHandlingService {
 
   // Pick a single video from camera or gallery
   Future<File?> pickSingleVideo({required ImageSource source}) async {
+    // Prevent concurrent operations
+    if (_isPickerActive) {
+      debugPrint('Video picker already active, ignoring request');
+      return null;
+    }
+
+    _isPickerActive = true;
+
     try {
       final XFile? pickedFile = await _picker.pickVideo(
         source: source,
@@ -215,6 +286,8 @@ class ImageHandlingService {
         stackTrace: stackTrace,
       );
       rethrow;
+    } finally {
+      _isPickerActive = false;
     }
   }
 
@@ -264,44 +337,81 @@ class ImageHandlingService {
     );
   }
 
-  // Upload videos to S3 Storage
+  // Upload videos to S3 Storage with parallel processing
   Future<List<String>> uploadVideosToS3({
     required List<File> videoFiles,
     required String storagePath,
     String? uniqueIdentifier,
+    int maxConcurrency = 4, // Increased for faster video uploads
   }) async {
     if (videoFiles.isEmpty) return [];
 
-    final List<String> uploadedUrls = [];
     final String identifier = uniqueIdentifier ?? const Uuid().v4();
 
-    for (int i = 0; i < videoFiles.length; i++) {
-      final File videoFile = videoFiles[i];
-      final String fileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${path.basename(videoFile.path)}';
-      final String objectKey = '$storagePath/videos/${identifier}_$fileName';
+    // Process videos in smaller batches due to larger file sizes
+    List<String> allUrls = [];
+
+    for (int i = 0; i < videoFiles.length; i += maxConcurrency) {
+      final int end = (i + maxConcurrency).clamp(0, videoFiles.length);
+      final List<File> batch = videoFiles.sublist(i, end);
+
+      // Upload batch in parallel
+      final List<Future<String?>> uploadFutures =
+          batch.asMap().entries.map((entry) {
+            final int batchIndex = entry.key;
+            final File videoFile = entry.value;
+            final String fileName =
+                '${DateTime.now().millisecondsSinceEpoch + batchIndex}_${path.basename(videoFile.path)}';
+            final String objectKey =
+                '$storagePath/videos/${identifier}_$fileName';
+
+            return _uploadSingleVideo(videoFile, objectKey);
+          }).toList();
 
       try {
-        final String? downloadUrl = await _s3Service.uploadFile(
-          file: videoFile,
-          objectKey: objectKey,
-          compress: false, // Don't compress videos
-        );
+        final List<String?> batchResults = await Future.wait(uploadFutures);
 
-        if (downloadUrl != null) {
-          uploadedUrls.add(downloadUrl);
-        }
+        // Filter out null results and add successful uploads
+        final List<String> successfulUrls =
+            batchResults.where((url) => url != null).cast<String>().toList();
+
+        allUrls.addAll(successfulUrls);
+
+        debugPrint(
+          'Video batch ${(i ~/ maxConcurrency) + 1}: ${successfulUrls.length}/${batch.length} uploads successful',
+        );
       } catch (e, stackTrace) {
         _errorService.logError(
           e,
-          context: 'ImageHandlingService.uploadVideosToS3',
+          context:
+              'ImageHandlingService.uploadVideosToS3 - batch ${(i ~/ maxConcurrency) + 1}',
           stackTrace: stackTrace,
         );
-        // Continue with other videos even if one fails
       }
     }
 
-    return uploadedUrls;
+    debugPrint(
+      'Total video uploads completed: ${allUrls.length}/${videoFiles.length}',
+    );
+    return allUrls;
+  }
+
+  // Helper method for single video upload
+  Future<String?> _uploadSingleVideo(File videoFile, String objectKey) async {
+    try {
+      return await _s3Service.uploadFile(
+        file: videoFile,
+        objectKey: objectKey,
+        compress: false, // Don't compress videos
+      );
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ImageHandlingService._uploadSingleVideo',
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
   }
 
   // Upload single video to S3 Storage

@@ -1,53 +1,37 @@
 {
   "project_info": {
-    "project_number": "33441701161",
-    "project_id": "gixat4wk",
-    "storage_bucket": "gixat4wk.firebasestorage.app"
+    "project_number": "274884115180",
+    "project_id": "gixat-4wk",
+    "storage_bucket": "gixat-4wk.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:33441701161:android:8c08c11c207b3469396b38",
+        "mobilesdk_app_id": "1:274884115180:android:44e01dd364326f6d6103c9",
         "android_client_info": {
           "package_name": "ae.u4wk.gixat4wk"
         }
       },
       "oauth_client": [
         {
-          "client_id": "33441701161-fk7ns42e9sii77aa2i1qsmbuqijkhkvd.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "ae.u4wk.gixat4wk",
-            "certificate_hash": "49da11b4430a4946d172c34c269b6047b0f55e89"
-          }
-        },
-        {
-          "client_id": "33441701161-qm9mls2q7r424toln6gtas92gpck25pj.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "ae.u4wk.gixat4wk",
-            "certificate_hash": "480e320163a3b4e95967a2c5f438ed0335b568dd"
-          }
-        },
-        {
-          "client_id": "33441701161-rae253e714gvnsdcl5vgu524an0e219s.apps.googleusercontent.com",
+          "client_id": "274884115180-dineung5jcpa3bbmlpi0h1u6974pej2q.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBnqTMHZwVD1ZsGkrnajoMDK9UDjPKzPZM"
+          "current_key": "AIzaSyDtMYeeU9CSGXvd9HyV2vk2qttf-sdc66c"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "33441701161-rae253e714gvnsdcl5vgu524an0e219s.apps.googleusercontent.com",
+              "client_id": "274884115180-dineung5jcpa3bbmlpi0h1u6974pej2q.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "33441701161-7rhh8oatdj10pcc3ppbbq50tctcena31.apps.googleusercontent.com",
+              "client_id": "274884115180-vq8dp4svu0sftfppic2ktc6okm4bqdpm.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "ae.4wk.gixat4wk"

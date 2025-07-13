@@ -264,6 +264,14 @@ class _AddCarScreenState extends State<AddCarScreen> {
           onChanged: (value) {
             _makeController.text = value;
             _make = value;
+            setState(() {
+              _selectedMake = value; // Update selected make when typing
+              if (value.isEmpty) {
+                // Clear model when make is cleared
+                _modelController.clear();
+                _model = '';
+              }
+            });
           },
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -282,7 +290,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
   Widget _buildModelAutocomplete() {
     return Autocomplete<String>(
       optionsBuilder: (TextEditingValue textEditingValue) async {
-        if (textEditingValue.text.isEmpty || _selectedMake.isEmpty) {
+        if (textEditingValue.text.isEmpty ||
+            _selectedMake.isEmpty ||
+            _selectedMake.length < 2) {
           return const Iterable<String>.empty();
         }
 
@@ -328,8 +338,8 @@ class _AddCarScreenState extends State<AddCarScreen> {
           decoration: InputDecoration(
             labelText: 'Model',
             hintText:
-                _selectedMake.isEmpty
-                    ? 'Select make first'
+                _selectedMake.isEmpty || _selectedMake.length < 2
+                    ? 'Enter make first (at least 2 characters)'
                     : 'Corolla, Civic, etc.',
             prefixIcon: const Icon(Icons.car_rental),
             filled: true,
@@ -343,7 +353,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
               vertical: 12,
             ),
           ),
-          enabled: _selectedMake.isNotEmpty,
+          enabled:
+              _selectedMake.isNotEmpty &&
+              _selectedMake.length >=
+                  2, // Enable when make has at least 2 characters
           textInputAction: TextInputAction.next,
           onFieldSubmitted: (_) {
             FocusScope.of(context).requestFocus(_yearFocus);
@@ -488,7 +501,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         gradient: LinearGradient(
-          colors: [Colors.blue[600]!, Colors.blue[700]!],
+          colors: [Colors.red[600]!, Colors.red[700]!],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

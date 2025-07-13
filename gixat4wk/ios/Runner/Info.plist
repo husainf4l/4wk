@@ -49,6 +49,8 @@
 	<string>This app needs camera access to take photos for client notes</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs photos access to upload images for client notes</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to record videos for client documentation</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -56,7 +58,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.33441701161-7rhh8oatdj10pcc3ppbbq50tctcena31</string>
+				<string>com.googleusercontent.apps.274884115180-vq8dp4svu0sftfppic2ktc6okm4bqdpm</string>
 			</array>
 		</dict>
 	</array>
@@ -67,6 +69,6 @@
 		<string>appleid</string>
 	</array>
 	<key>GIDClientID</key>
-	<string>33441701161-7rhh8oatdj10pcc3ppbbq50tctcena31.apps.googleusercontent.com</string>
+	<string>274884115180-vq8dp4svu0sftfppic2ktc6okm4bqdpm.apps.googleusercontent.com</string>
 </dict>
 </plist>
