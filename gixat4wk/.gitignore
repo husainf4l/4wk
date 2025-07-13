@@ -56,6 +56,7 @@ yarn-error.log
 # Bundle artifact
 *.jsbundle
 
+<<<<<<< HEAD
 # Ruby / CocoaPods
 **/Pods/
 /vendor/bundle/
@@ -73,3 +74,20 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+=======
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# AWS credentials
+aws-*-credentials
+*.pem
+*.key
+>>>>>>> fix-main
