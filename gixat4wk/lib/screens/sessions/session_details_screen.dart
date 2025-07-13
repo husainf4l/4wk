@@ -458,13 +458,20 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           padding: EdgeInsets.zero,
                           itemBuilder: (context, index) {
+                            final activityDoc = activities[index];
                             final activity =
-                                activities[index].data()
-                                    as Map<String, dynamic>;
+                                activityDoc.data() as Map<String, dynamic>;
                             return _UnifiedActivityItem(
                               activity: activity,
+                              activityId: activityDoc.id,
+                              sessionData: {
+                                'car': widget.session.car,
+                                'client': widget.session.client,
+                                'status': widget.session.status,
+                              },
                               color: primaryColor,
                               formatTimestamp: _formatTimestamp,
+                              onActivityUpdated: () => setState(() {}),
                             );
                           },
                         );
@@ -607,13 +614,19 @@ class _SessionBox extends StatelessWidget {
 // Unified activity item component for new session_activities collection
 class _UnifiedActivityItem extends StatelessWidget {
   final Map<String, dynamic> activity;
+  final String activityId;
+  final Map<String, dynamic> sessionData;
   final Color color;
   final String Function(dynamic) formatTimestamp;
+  final VoidCallback? onActivityUpdated;
 
   const _UnifiedActivityItem({
     required this.activity,
+    required this.activityId,
+    required this.sessionData,
     required this.color,
     required this.formatTimestamp,
+    this.onActivityUpdated,
   });
 
   @override
@@ -657,114 +670,156 @@ class _UnifiedActivityItem extends StatelessWidget {
         stageColor = color;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: stageColor.withAlpha(51), width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: stageColor.withAlpha(26),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(stageIcon, size: 20, color: stageColor),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        stageTitle,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        formatTimestamp(activity['createdAt']),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[700],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        status == 'completed'
-                            ? Colors.green.withAlpha(26)
-                            : Colors.orange.withAlpha(26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color:
-                          status == 'completed' ? Colors.green : Colors.orange,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (notes.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                notes,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[800],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            if (images.isNotEmpty || requests.isNotEmpty) ...[
-              const SizedBox(height: 12),
+    return InkWell(
+      onTap: () => _navigateToActivity(context, stage),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: stageColor.withAlpha(51), width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  if (images.isNotEmpty) ...[
-                    Icon(Icons.image, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${images.length} image${images.length != 1 ? 's' : ''}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: stageColor.withAlpha(26),
+                      shape: BoxShape.circle,
                     ),
-                  ],
-                  if (images.isNotEmpty && requests.isNotEmpty) ...[
-                    const SizedBox(width: 16),
-                  ],
-                  if (requests.isNotEmpty) ...[
-                    Icon(Icons.list_alt, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${requests.length} request${requests.length != 1 ? 's' : ''}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    child: Icon(stageIcon, size: 20, color: stageColor),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          stageTitle,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          formatTimestamp(activity['createdAt']),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          status == 'completed'
+                              ? Colors.green.withAlpha(26)
+                              : Colors.orange.withAlpha(26),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            status == 'completed'
+                                ? Colors.green
+                                : Colors.orange,
+                      ),
+                    ),
+                  ),
                 ],
               ),
+              if (notes.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  notes,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[800],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              if (images.isNotEmpty || requests.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    if (images.isNotEmpty) ...[
+                      Icon(Icons.image, size: 16, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${images.length} image${images.length != 1 ? 's' : ''}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                    if (images.isNotEmpty && requests.isNotEmpty) ...[
+                      const SizedBox(width: 16),
+                    ],
+                    if (requests.isNotEmpty) ...[
+                      Icon(Icons.list_alt, size: 16, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${requests.length} request${requests.length != 1 ? 's' : ''}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  void _navigateToActivity(BuildContext context, String stage) async {
+    ActivityStage activityStage;
+    switch (stage) {
+      case 'clientNotes':
+        activityStage = ActivityStage.clientNotes;
+        break;
+      case 'inspection':
+        activityStage = ActivityStage.inspection;
+        break;
+      case 'testDrive':
+        activityStage = ActivityStage.testDrive;
+        break;
+      case 'report':
+        activityStage = ActivityStage.report;
+        break;
+      default:
+        return;
+    }
+
+    final result = await Get.to(
+      () => UnifiedSessionActivityScreen(
+        sessionId: activity['sessionId'] ?? '',
+        clientId: activity['clientId'] ?? '',
+        carId: activity['carId'] ?? '',
+        garageId: activity['garageId'] ?? '',
+        stage: activityStage,
+        activityId: activityId,
+        sessionData: sessionData,
+      ),
+    );
+
+    if (result == true && onActivityUpdated != null) {
+      onActivityUpdated!();
+    }
   }
 }

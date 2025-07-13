@@ -55,6 +55,7 @@ class _UnifiedSessionActivityScreenState
 
   // Form controllers
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _mileageController = TextEditingController();
 
   // Common data
   List<String> _images = []; // Uploaded image URLs
@@ -68,6 +69,7 @@ class _UnifiedSessionActivityScreenState
   List<Map<String, dynamic>> _findings = []; // For inspection
   List<Map<String, dynamic>> _observations = []; // For test drive
   Map<String, dynamic> _reportData = {}; // For report
+  String _mileage = ''; // For client notes
 
   // Current activity (if editing)
   UnifiedSessionActivity? _currentActivity;
@@ -81,6 +83,7 @@ class _UnifiedSessionActivityScreenState
   @override
   void dispose() {
     _notesController.dispose();
+    _mileageController.dispose();
     // Clean up pending compressed images
     _cleanupPendingImages();
     // Clear progress tracking
@@ -159,6 +162,12 @@ class _UnifiedSessionActivityScreenState
       }
       if (activity.reportData != null) {
         _reportData = Map.from(activity.reportData!);
+        // Load mileage for client notes
+        if (activity.stage == ActivityStage.clientNotes &&
+            activity.reportData!.containsKey('mileage')) {
+          _mileage = activity.reportData!['mileage'] ?? '';
+          _mileageController.text = _mileage;
+        }
       }
     });
   }
@@ -411,15 +420,18 @@ class _UnifiedSessionActivityScreenState
   UnifiedSessionActivity _createActivityFromForm(String id) {
     switch (widget.stage) {
       case ActivityStage.clientNotes:
-        return UnifiedSessionActivity.forClientNotes(
+        return UnifiedSessionActivity(
+          id: id,
           sessionId: widget.sessionId,
           clientId: widget.clientId,
           carId: widget.carId,
           garageId: widget.garageId,
+          stage: ActivityStage.clientNotes,
           notes: _notesController.text.trim(),
           requests: _requests,
           images: _images,
           videos: _videos,
+          reportData: {'mileage': _mileage}, // Store mileage in reportData
         );
 
       case ActivityStage.inspection:
@@ -429,7 +441,7 @@ class _UnifiedSessionActivityScreenState
           carId: widget.carId,
           garageId: widget.garageId,
           notes: _notesController.text.trim(),
-          findings: _findings,
+          findings: [], // Removed findings - notes and requests are enough
           images: _images,
           videos: _videos,
           requests: _requests,
@@ -442,7 +454,8 @@ class _UnifiedSessionActivityScreenState
           carId: widget.carId,
           garageId: widget.garageId,
           notes: _notesController.text.trim(),
-          observations: _observations,
+          observations:
+              [], // Removed observations - notes and requests are enough
           images: _images,
           videos: _videos,
           requests: _requests,
@@ -556,13 +569,13 @@ class _UnifiedSessionActivityScreenState
 
                 const SizedBox(height: 24),
 
-                // Images section (always visible)
-                _buildImagesSection(),
+                // Service Requests section (moved before images)
+                _buildRequestsSection(),
 
                 const SizedBox(height: 24),
 
-                // Requests section (always visible)
-                _buildRequestsSection(),
+                // Images section (moved to end)
+                _buildImagesSection(),
 
                 const SizedBox(height: 100), // Extra space for FAB
               ],
@@ -628,15 +641,45 @@ class _UnifiedSessionActivityScreenState
 
   List<Widget> _buildStageSpecificSections() {
     switch (widget.stage) {
+      case ActivityStage.clientNotes:
+        return [_buildMileageSection()];
       case ActivityStage.inspection:
-        return [_buildFindingsSection()];
+        return []; // Notes and service requests are enough
       case ActivityStage.testDrive:
-        return [_buildObservationsSection()];
+        return []; // Notes and service requests are enough
       case ActivityStage.report:
         return [_buildReportDataSection()];
-      case ActivityStage.clientNotes:
-        return [];
     }
+  }
+
+  Widget _buildMileageSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Vehicle Mileage', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _mileageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Current Mileage',
+                    hintText: 'Enter vehicle mileage (e.g., 50,000)',
+                    suffixText: 'km',
+                    prefixIcon: Icon(Icons.speed),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) => _mileage = value,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildFindingsSection() {
