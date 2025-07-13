@@ -21,22 +21,10 @@ class RequestListWidget extends StatelessWidget {
     final theme = Theme.of(context);
 
     if (requests.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withAlpha(51)),
-        ),
-        child: Center(
-          child: Text(
-            'No service requests added',
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontStyle: FontStyle.italic,
-            ),
-          ),
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 24.0),
+          child: Text('No service requests added yet.'),
         ),
       );
     }
@@ -50,43 +38,83 @@ class RequestListWidget extends StatelessWidget {
         final argancy = request['argancy'] ?? 'low';
 
         Color argancyColor;
+        String argancyLabel;
+        IconData argancyIcon;
+
         switch (argancy) {
           case 'high':
             argancyColor = Colors.red;
+            argancyLabel = 'High';
+            argancyIcon = Icons.arrow_upward;
             break;
           case 'medium':
             argancyColor = Colors.orange;
+            argancyLabel = 'Medium';
+            argancyIcon = Icons.remove;
             break;
           default:
             argancyColor = Colors.green;
+            argancyLabel = 'Low';
+            argancyIcon = Icons.arrow_downward;
         }
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
+          elevation: 0,
+          margin: const EdgeInsets.symmetric(vertical: 4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: Colors.grey[200]!),
           ),
           child: ListTile(
-            leading: InkWell(
-              onTap:
-                  isEditing && onEditArgancy != null
-                      ? () => _showArgancyDialog(context, request)
-                      : null,
-              customBorder: const CircleBorder(),
-              child: Tooltip(
-                message: isEditing ? 'Tap to change urgency' : 'Urgency level',
-                child: CircleAvatar(
-                  backgroundColor: argancyColor,
-                  child: Text(argancy[0].toUpperCase()),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
+            title: Text(
+              request['request'] ?? 'Unknown Request',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: InkWell(
+                onTap:
+                    isEditing && onEditArgancy != null
+                        ? () => _showArgancyDialog(context, request)
+                        : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: argancyColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(argancyIcon, color: argancyColor, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        argancyLabel,
+                        style: TextStyle(
+                          color: argancyColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            title: Text(request['request'] ?? 'Unknown Request'),
-
             trailing:
                 isEditing && onRemoveRequest != null
                     ? IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.redAccent,
+                      ),
                       onPressed: () => onRemoveRequest!(request),
                     )
                     : null,
@@ -174,129 +202,109 @@ class RequestListWidget extends StatelessWidget {
     BuildContext context, {
     required Function(String, String) onAddRequest,
   }) {
-    String selectedArgancy = 'low';
+    final requestController = TextEditingController();
+    String selectedUrgency = 'low'; // Default urgency
 
     showDialog(
       context: context,
-      barrierDismissible: true,
       builder: (dialogContext) {
-        final textController = TextEditingController();
-
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Add New Request'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              backgroundColor: Colors.white,
+              title: Row(
+                children: [
+                  const Icon(Icons.add_circle_outline, color: Colors.blue),
+                  const SizedBox(width: 10),
+                  const Text('Add Service Request'),
+                ],
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
-                    controller: textController,
+                    controller: requestController,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter service request',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.build_circle),
+                    decoration: InputDecoration(
+                      labelText: 'Request Description',
+                      hintText: 'e.g., "Check engine light"',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[50],
                     ),
-                    textCapitalization: TextCapitalization.sentences,
                   ),
-                  const SizedBox(height: 16),
-                  const Text('Urgency Level:'),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Urgency Level',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildUrgencyOption(
-                        'Low',
-                        Colors.green,
-                        selectedArgancy,
-                        (value) {
-                          setState(() => selectedArgancy = value);
-                        },
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'low',
+                        label: Text('Low'),
+                        icon: Icon(Icons.arrow_downward, color: Colors.green),
                       ),
-                      _buildUrgencyOption(
-                        'Medium',
-                        Colors.orange,
-                        selectedArgancy,
-                        (value) {
-                          setState(() => selectedArgancy = value);
-                        },
+                      ButtonSegment(
+                        value: 'medium',
+                        label: Text('Medium'),
+                        icon: Icon(Icons.remove, color: Colors.orange),
                       ),
-                      _buildUrgencyOption('High', Colors.red, selectedArgancy, (
-                        value,
-                      ) {
-                        setState(() => selectedArgancy = value);
-                      }),
+                      ButtonSegment(
+                        value: 'high',
+                        label: Text('High'),
+                        icon: Icon(Icons.arrow_upward, color: Colors.red),
+                      ),
                     ],
+                    selected: {selectedUrgency},
+                    onSelectionChanged: (newSelection) {
+                      setDialogState(() {
+                        selectedUrgency = newSelection.first;
+                      });
+                    },
+                    style: SegmentedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
                   ),
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('CANCEL'),
+                  child: const Text('Cancel'),
                 ),
-                ElevatedButton(
+                FilledButton(
                   onPressed: () {
-                    final request = textController.text.trim();
-                    if (request.isNotEmpty) {
-                      onAddRequest(request, selectedArgancy);
+                    if (requestController.text.trim().isNotEmpty) {
+                      onAddRequest(
+                        requestController.text.trim(),
+                        selectedUrgency,
+                      );
                       Navigator.of(dialogContext).pop();
                     }
                   },
-                  child: const Text('ADD'),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Add Request'),
                 ),
               ],
             );
           },
         );
       },
-    );
-  }
-
-  static Widget _buildUrgencyOption(
-    String label,
-    Color color,
-    String selectedValue,
-    Function(String) onSelect,
-  ) {
-    final isSelected = selectedValue.toLowerCase() == label.toLowerCase();
-
-    return InkWell(
-      onTap: () => onSelect(label.toLowerCase()),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey[300]!,
-            width: isSelected ? 2 : 1,
-          ),
-          color: isSelected ? color.withAlpha(77) : null,
-        ),
-        child: Column(
-          children: [
-            CircleAvatar(
-              backgroundColor: color,
-              radius: 14,
-              child: Text(
-                label[0],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

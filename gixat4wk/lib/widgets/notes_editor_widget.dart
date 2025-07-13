@@ -92,55 +92,46 @@ class NotesEditorWidget extends StatelessWidget {
       barrierDismissible: true,
       builder:
           (dialogContext) => AlertDialog(
-            backgroundColor: Colors.white, // White background for dialog
-            title: const Text(
-              'Edit Notes',
-              style: TextStyle(color: Colors.black),
-            ), // Black text for title
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            backgroundColor: Colors.white,
+            title: Row(
+              children: [
+                const Icon(Icons.edit_note, color: Colors.blue),
+                const SizedBox(width: 10),
+                const Text('Edit Notes'),
+              ],
+            ),
             content: TextField(
               controller: notesController,
               autofocus: true,
               maxLines: 5,
-              style: const TextStyle(
-                color: Colors.black,
-              ), // Black text for input
               decoration: InputDecoration(
-                hintText: 'Enter notes here',
-                hintStyle: TextStyle(color: Colors.grey[500]), // Grey hint text
-                border: const OutlineInputBorder(),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Theme.of(context).primaryColor,
-                  ), // Use primary color for focused border
+                hintText: 'Enter your notes here...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                prefixIcon: Icon(
-                  Icons.note_alt,
-                  color: Colors.grey[600],
-                ), // Grey icon
+                filled: true,
+                fillColor: Colors.grey[50],
               ),
-              textCapitalization: TextCapitalization.sentences,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(
-                  'CANCEL',
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
+                child: const Text('Cancel'),
               ),
-              ElevatedButton(
+              FilledButton(
                 onPressed: () {
                   onSave(notesController.text.trim());
                   Navigator.of(dialogContext).pop();
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Theme.of(
-                        context,
-                      ).primaryColor, // Primary color background
-                  foregroundColor: Colors.white, // White text
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: const Text('SAVE'),
+                child: const Text('Save'),
               ),
             ],
           ),

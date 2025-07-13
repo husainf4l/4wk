@@ -30,10 +30,11 @@ class _AddClientScreenState extends State<AddClientScreen> {
 
   String _name = '';
   String _phone = '';
-  String? _city = 'Abu Dhabi';
+  String? _city;
   String? _country = 'United Arab Emirates';
   bool _isLoading = false;
   String _selectedCountry = 'United Arab Emirates';
+  List<String> _citiesForSelectedCountry = [];
 
   String get _selectedCountryCode {
     final found = _meCountries.firstWhere(
@@ -41,6 +42,27 @@ class _AddClientScreenState extends State<AddClientScreen> {
       orElse: () => {'code': ''},
     );
     return found['code'] ?? '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _updateCitiesForCountry(_selectedCountry);
+    _city =
+        _citiesForSelectedCountry.isNotEmpty
+            ? _citiesForSelectedCountry.first
+            : null;
+  }
+
+  void _updateCitiesForCountry(String country) {
+    setState(() {
+      _citiesForSelectedCountry = meCountryCities[country] ?? [];
+      if (_citiesForSelectedCountry.isNotEmpty) {
+        _city = _citiesForSelectedCountry.first;
+      } else {
+        _city = null;
+      }
+    });
   }
 
   @override
@@ -130,66 +152,93 @@ class _AddClientScreenState extends State<AddClientScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final accentColor = const Color(0xFFE82127); // Tesla-like Red
 
     return Scaffold(
-      body: SafeArea(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text(
+          'Create New Client',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+        ),
+        centerTitle: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.black54),
+          onPressed: () => Get.back(),
+        ),
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Add Client',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClientFormFields(
+                  nameFocus: _nameFocus,
+                  phoneFocus: _phoneFocus,
+                  cityFocus: _cityFocus,
+                  countryFocus: _countryFocus,
+                  phoneController: _phoneController,
+                  onSavedName: (val) => _name = val!,
+                  onSavedPhone: (val) => _phone = val!,
+                  onSavedCity: (val) => _city = val,
+                  onSavedCountry: (val) => _country = val,
+                  countryList: _meCountries.map((c) => c['name']!).toList(),
+                  selectedCountry: _selectedCountry,
+                  onCountryChanged: (val) {
+                    setState(() {
+                      _selectedCountry = val;
+                      _country = val;
+                      _updateCitiesForCountry(val);
+                    });
+                  },
+                  countryCode: _selectedCountryCode,
+                  initialCity: _city,
+                  cityList: _citiesForSelectedCountry,
+                  onCityChanged: (val) {
+                    setState(() {
+                      _city = val;
+                    });
+                  },
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : _saveClient,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accentColor,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      Get.back();
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Form(
-                  key: _formKey,
-                  child: ClientFormFields(
-                    nameFocus: _nameFocus,
-                    phoneFocus: _phoneFocus,
-                    cityFocus: _cityFocus,
-                    countryFocus: _countryFocus,
-                    phoneController: _phoneController,
-                    isLoading: _isLoading,
-                    onSavedName: (val) => _name = val!,
-                    onSavedPhone: (val) => _phone = val!,
-                    onSavedCity: (val) => _city = val,
-                    onSavedCountry: (val) => _country = val,
-                    onSubmit: _saveClient,
-                    countryList: _meCountries.map((c) => c['name']!).toList(),
-                    selectedCountry: _selectedCountry,
-                    onCountryChanged: (val) {
-                      setState(() {
-                        _selectedCountry = val;
-                        _country = val;
-                        if (val == 'United Arab Emirates' &&
-                            (_city == null || _city!.isEmpty)) {
-                          _city = 'Abu Dhabi';
-                        }
-                      });
-                    },
-                    countryCode: _selectedCountryCode,
-                    initialCity: _city,
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 3,
+                              ),
+                            )
+                            : const Text(
+                              'Save and Add Car',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

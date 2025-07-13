@@ -85,7 +85,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor;
+    final accentColor = const Color(0xFFE82127); // Tesla-like Red
     final carMake = widget.session.car['make'] ?? '';
     final carModel = widget.session.car['model'] ?? '';
     final plateNumber = widget.session.car['plateNumber'] ?? '';
@@ -93,7 +93,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         '$carMake $carModel ${plateNumber.isNotEmpty ? '• $plateNumber' : ''}';
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -102,14 +102,17 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
             children: [
               // Elegant header with car details
               Container(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
                 decoration: BoxDecoration(
-                  color: theme.scaffoldBackgroundColor,
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(24),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withAlpha(20),
-                      blurRadius: 12,
-                      offset: const Offset(0, 3),
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 5),
                     ),
                   ],
                 ),
@@ -122,20 +125,20 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                         // Session status indicator
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                            horizontal: 12,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
                             color: SessionUtils.getStatusColor(
                               widget.session.status,
-                            ).withAlpha(38),
+                            ).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             SessionUtils.formatStatus(widget.session.status),
                             style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                               color: SessionUtils.getStatusColor(
                                 widget.session.status,
                               ),
@@ -147,13 +150,13 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.black12,
+                              color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
                               Icons.close,
-                              size: 18,
-                              color: Colors.black, // Black icon for close
+                              size: 20,
+                              color: Colors.black54,
                             ),
                           ),
                         ),
@@ -165,16 +168,15 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       carTitle,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.black, // Black text
-                        letterSpacing: 0.4,
+                        color: Colors.black87,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     // Client name
                     Text(
                       'Client: ${widget.session.client['name'] ?? 'Unknown'}',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[800], // Darker gray for subtitle
-                        letterSpacing: 0.2,
+                        color: Colors.grey[700],
                       ),
                     ),
                   ],
@@ -182,19 +184,14 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
               ),
 
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 20.0,
-                ),
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Session Activities',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.black, // Black text
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -204,7 +201,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           child: _SessionBox(
                             icon: Icons.sticky_note_2_outlined,
                             title: 'Client Notes',
-                            color: primaryColor,
+                            color: accentColor,
                             hasData: stageHasData['clientNotes'] ?? false,
                             onTap: () async {
                               // Navigate to unified session activity screen for client notes
@@ -234,7 +231,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           child: _SessionBox(
                             icon: Icons.search,
                             title: 'Inspection',
-                            color: primaryColor,
+                            color: accentColor,
                             hasData: stageHasData['inspection'] ?? false,
                             onTap: () async {
                               // Navigate to unified session activity screen for inspection
@@ -268,7 +265,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           child: _SessionBox(
                             icon: Icons.directions_car,
                             title: 'Test Drive',
-                            color: primaryColor,
+                            color: accentColor,
                             hasData: stageHasData['testDrive'] ?? false,
                             onTap: () async {
                               // Navigate to unified session activity screen for test drive
@@ -298,7 +295,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           child: _SessionBox(
                             icon: Icons.assignment,
                             title: 'G Report',
-                            color: primaryColor,
+                            color: accentColor,
                             hasData: stageHasData['report'] ?? false,
                             onTap: () async {
                               // Navigate to dedicated report screen
@@ -333,7 +330,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           child: _SessionBox(
                             icon: Icons.assignment,
                             title: 'Job Order',
-                            color: primaryColor,
+                            color: accentColor,
                             // Job Order requires reportId to be present
                             hasData: widget.session.reportId != null,
                             onTap: () {},
@@ -350,10 +347,8 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                     // Activity history section
                     Text(
                       'Activity History',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: Colors.black, // Black text
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.2,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
 
@@ -380,7 +375,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                               ),
                               child: CircularProgressIndicator(
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  primaryColor,
+                                  accentColor,
                                 ),
                                 strokeWidth: 2,
                               ),
@@ -469,7 +464,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                                 'client': widget.session.client,
                                 'status': widget.session.status,
                               },
-                              color: primaryColor,
+                              color: accentColor,
                               formatTimestamp: _formatTimestamp,
                               onActivityUpdated: () => setState(() {}),
                             );
@@ -543,65 +538,48 @@ class _SessionBox extends StatelessWidget {
       child: Container(
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white, // White background for light theme
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withAlpha(51), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Stack(
           children: [
-            // Very subtle gradient overlay for depth
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [color.withAlpha(8), Colors.transparent],
-                ),
-              ),
-            ),
-            // Content
-            Center(
+            Padding(
+              padding: const EdgeInsets.all(12.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(26),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 24,
-                      color: hasData ? Colors.green : color,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
+                  Icon(icon, size: 24, color: color),
+                  const Spacer(),
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black, // Black text
-                      letterSpacing: 0.2,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
                 ],
               ),
             ),
-            // Add small indicator dot if has data
             if (hasData)
               Positioned(
-                top: 12,
-                right: 12,
+                top: 10,
+                right: 10,
                 child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.green,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.2),
                     shape: BoxShape.circle,
                   ),
+                  child: const Icon(Icons.check, color: Colors.green, size: 12),
                 ),
               ),
           ],
@@ -633,118 +611,98 @@ class _UnifiedActivityItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final stage = activity['stage'] ?? '';
-    final status = activity['status'] ?? 'draft';
     final notes = activity['notes'] ?? '';
     final images = activity['images'] as List? ?? [];
     final requests = activity['requests'] as List? ?? [];
+    final findings = activity['findings'] as List? ?? [];
+    final observations = activity['observations'] as List? ?? [];
 
     // Get stage-specific icon and title
     IconData stageIcon;
     String stageTitle;
-    Color stageColor;
 
     switch (stage) {
       case 'clientNotes':
         stageIcon = Icons.sticky_note_2_outlined;
         stageTitle = 'Client Notes';
-        stageColor = Colors.blue;
         break;
       case 'inspection':
         stageIcon = Icons.search;
         stageTitle = 'Inspection';
-        stageColor = Colors.orange;
         break;
       case 'testDrive':
-        stageIcon = Icons.directions_car;
+        stageIcon = Icons.directions_car_outlined;
         stageTitle = 'Test Drive';
-        stageColor = Colors.green;
         break;
       case 'report':
-        stageIcon = Icons.assignment;
+        stageIcon = Icons.assignment_outlined;
         stageTitle = 'Report';
-        stageColor = Colors.purple;
         break;
       default:
-        stageIcon = Icons.circle;
+        stageIcon = Icons.help_outline;
         stageTitle = 'Activity';
-        stageColor = color;
     }
+
+    final hasContent =
+        notes.isNotEmpty ||
+        images.isNotEmpty ||
+        requests.isNotEmpty ||
+        findings.isNotEmpty ||
+        observations.isNotEmpty;
 
     return InkWell(
       onTap: () => _navigateToActivity(context, stage),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: stageColor.withAlpha(51), width: 1),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: stageColor.withAlpha(26),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(stageIcon, size: 20, color: stageColor),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          stageTitle,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w600,
-                          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: color.withOpacity(0.1),
+                  child: Icon(stageIcon, size: 20, color: color),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        stageTitle,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        Text(
-                          formatTimestamp(activity['createdAt']),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[700],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          status == 'completed'
-                              ? Colors.green.withAlpha(26)
-                              : Colors.orange.withAlpha(26),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      status.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            status == 'completed'
-                                ? Colors.green
-                                : Colors.orange,
                       ),
-                    ),
+                      Text(
+                        formatTimestamp(activity['createdAt']),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.grey),
+              ],
+            ),
+            if (hasContent) ...[
+              const Divider(height: 24),
               if (notes.isNotEmpty) ...[
-                const SizedBox(height: 12),
                 Text(
                   notes,
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -753,37 +711,49 @@ class _UnifiedActivityItem extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ],
-              if (images.isNotEmpty || requests.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    if (images.isNotEmpty) ...[
-                      Icon(Icons.image, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${images.length} image${images.length != 1 ? 's' : ''}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                    if (images.isNotEmpty && requests.isNotEmpty) ...[
-                      const SizedBox(width: 16),
-                    ],
-                    if (requests.isNotEmpty) ...[
-                      Icon(Icons.list_alt, size: 16, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${requests.length} request${requests.length != 1 ? 's' : ''}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ],
-                ),
               ],
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  if (images.isNotEmpty)
+                    _buildInfoChip(
+                      Icons.image_outlined,
+                      '${images.length} Image${images.length > 1 ? 's' : ''}',
+                    ),
+                  if (requests.isNotEmpty)
+                    _buildInfoChip(
+                      Icons.list_alt_outlined,
+                      '${requests.length} Request${requests.length > 1 ? 's' : ''}',
+                    ),
+                  if (findings.isNotEmpty)
+                    _buildInfoChip(
+                      Icons.error_outline,
+                      '${findings.length} Finding${findings.length > 1 ? 's' : ''}',
+                    ),
+                  if (observations.isNotEmpty)
+                    _buildInfoChip(
+                      Icons.visibility_outlined,
+                      '${observations.length} Observation${observations.length > 1 ? 's' : ''}',
+                    ),
+                ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey[700]),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[800])),
+      ],
     );
   }
 

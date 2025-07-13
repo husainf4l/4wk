@@ -185,16 +185,16 @@ class _UnifiedSessionActivityScreenState
     }
   }
 
-  String get _stageIcon {
+  IconData get _stageIconData {
     switch (widget.stage) {
       case ActivityStage.clientNotes:
-        return '📝';
+        return Icons.notes;
       case ActivityStage.inspection:
-        return '🔍';
+        return Icons.search;
       case ActivityStage.testDrive:
-        return '🚗';
+        return Icons.directions_car;
       case ActivityStage.report:
-        return '📋';
+        return Icons.assignment;
     }
   }
 
@@ -441,7 +441,7 @@ class _UnifiedSessionActivityScreenState
           carId: widget.carId,
           garageId: widget.garageId,
           notes: _notesController.text.trim(),
-          findings: [], // Removed findings - notes and requests are enough
+          findings: _findings,
           images: _images,
           videos: _videos,
           requests: _requests,
@@ -454,8 +454,7 @@ class _UnifiedSessionActivityScreenState
           carId: widget.carId,
           garageId: widget.garageId,
           notes: _notesController.text.trim(),
-          observations:
-              [], // Removed observations - notes and requests are enough
+          observations: _observations,
           images: _images,
           videos: _videos,
           requests: _requests,
@@ -478,110 +477,144 @@ class _UnifiedSessionActivityScreenState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: Text(_stageTitle)),
+        appBar: AppBar(
+          title: Text('Loading $_stageTitle...'),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          elevation: 0,
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
+      backgroundColor: Colors.grey[100], // A slightly off-white background
       appBar: AppBar(
         title: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_stageIcon),
-            const SizedBox(width: 8),
-            Text(_stageTitle),
+            Icon(_stageIconData, color: theme.primaryColor),
+            const SizedBox(width: 12),
+            Text(
+              _stageTitle,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
         actions: [
-          if (_isSaving && _uploadStatus.isNotEmpty)
-            Flexible(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Center(
-                  child: Text(
-                    _uploadStatus,
-                    style: const TextStyle(fontSize: 11),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: Center(
+              child: FilledButton.icon(
+                onPressed: _isSaving ? null : _saveActivity,
+                icon:
+                    _isSaving
+                        ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            value: _uploadProgress > 0 ? _uploadProgress : null,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.onPrimary,
+                            ),
+                          ),
+                        )
+                        : const Icon(Icons.save, size: 18),
+                label: Text(
+                  _isSaving ? '${(_uploadProgress * 100).toInt()}%' : 'Save',
+                ),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
             ),
-          TextButton(
-            onPressed: _isSaving ? null : _saveActivity,
-            child:
-                _isSaving
-                    ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            value: _uploadProgress > 0 ? _uploadProgress : null,
-                            color: Colors.white,
-                          ),
-                        ),
-                        if (_uploadProgress > 0) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            '${(_uploadProgress * 100).toInt()}%',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    )
-                    : const Text(
-                      'Save',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Session context (optional)
+            if (widget.sessionData != null) _buildSessionContext(),
+
+            // Stage-specific sections
+            ..._buildStageSpecificSections(),
+
+            // Notes section (always visible)
+            _buildNotesSection(),
+
+            // Service Requests section
+            _buildRequestsSection(),
+
+            // Media section
+            _buildImagesSection(),
+
+            const SizedBox(height: 100), // Extra space for FAB
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required Widget child,
+    Widget? trailing,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Session context (optional)
-                if (widget.sessionData != null) _buildSessionContext(),
-
-                // Notes section (always visible)
-                _buildNotesSection(),
-
-                const SizedBox(height: 24),
-
-                // Stage-specific sections
-                ..._buildStageSpecificSections(),
-
-                const SizedBox(height: 24),
-
-                // Service Requests section (moved before images)
-                _buildRequestsSection(),
-
-                const SizedBox(height: 24),
-
-                // Images section (moved to end)
-                _buildImagesSection(),
-
-                const SizedBox(height: 100), // Extra space for FAB
+                Row(
+                  children: [
+                    Icon(icon, color: theme.primaryColor, size: 22),
+                    const SizedBox(width: 10),
+                    Text(
+                      title,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
+                ),
+                if (trailing != null) trailing,
               ],
             ),
-          ),
-        ],
+            const Divider(height: 24, thickness: 1),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -591,51 +624,68 @@ class _UnifiedSessionActivityScreenState
     final client = session['client'] ?? {};
     final car = session['car'] ?? {};
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Session Context',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text('Client: ${client['name'] ?? 'Unknown'}'),
-            Text(
-              'Vehicle: ${car['make'] ?? ''} ${car['model'] ?? ''} (${car['plateNumber'] ?? ''})',
-            ),
-            Text('Status: ${session['status'] ?? 'Unknown'}'),
-          ],
-        ),
+    return _buildSection(
+      title: 'Session Context',
+      icon: Icons.info_outline,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoRow(
+            Icons.person_outline,
+            'Client',
+            client['name'] ?? 'Unknown',
+          ),
+          const SizedBox(height: 8),
+          _buildInfoRow(
+            Icons.directions_car_outlined,
+            'Vehicle',
+            '${car['make'] ?? ''} ${car['model'] ?? ''} (${car['plateNumber'] ?? ''})',
+          ),
+          const SizedBox(height: 8),
+          _buildInfoRow(
+            Icons.flag_outlined,
+            'Status',
+            session['status'] ?? 'Unknown',
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildNotesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
       children: [
-        Text('Notes', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        NotesEditorWidget(
-          notes: _notesController.text,
-          isEditing: true,
-          onEditPressed: () {
-            NotesEditorWidget.showEditDialog(
-              context,
-              initialValue: _notesController.text,
-              onSave: (newNotes) {
-                setState(() {
-                  _notesController.text = newNotes;
-                });
-              },
-            );
-          },
-        ),
+        Icon(icon, size: 18, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
+        Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
       ],
+    );
+  }
+
+  Widget _buildNotesSection() {
+    return _buildSection(
+      title: 'Notes',
+      icon: Icons.edit_note,
+      trailing: IconButton(
+        icon: const Icon(Icons.edit, color: Colors.blue),
+        onPressed: () {
+          NotesEditorWidget.showEditDialog(
+            context,
+            initialValue: _notesController.text,
+            onSave: (newNotes) {
+              setState(() {
+                _notesController.text = newNotes;
+              });
+            },
+          );
+        },
+      ),
+      child: NotesEditorWidget(
+        notes: _notesController.text,
+        isEditing: false, // Display only, edit is via button
+        onEditPressed: () {},
+      ),
     );
   }
 
@@ -644,83 +694,83 @@ class _UnifiedSessionActivityScreenState
       case ActivityStage.clientNotes:
         return [_buildMileageSection()];
       case ActivityStage.inspection:
-        return []; // Notes and service requests are enough
+        return [
+          _buildFindingsSection(),
+        ]; // Notes and service requests are enough
       case ActivityStage.testDrive:
-        return []; // Notes and service requests are enough
+        return [
+          _buildObservationsSection(),
+        ]; // Notes and service requests are enough
       case ActivityStage.report:
         return [_buildReportDataSection()];
     }
   }
 
   Widget _buildMileageSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Vehicle Mileage', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: _mileageController,
-                  decoration: const InputDecoration(
-                    labelText: 'Current Mileage',
-                    hintText: 'Enter vehicle mileage (e.g., 50,000)',
-                    suffixText: 'km',
-                    prefixIcon: Icon(Icons.speed),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) => _mileage = value,
-                ),
-              ],
-            ),
-          ),
+    return _buildSection(
+      title: 'Vehicle Mileage',
+      icon: Icons.speed,
+      child: TextFormField(
+        controller: _mileageController,
+        decoration: const InputDecoration(
+          labelText: 'Current Mileage',
+          hintText: 'Enter vehicle mileage (e.g., 50,000)',
+          suffixText: 'km',
+          border: OutlineInputBorder(),
         ),
-      ],
+        keyboardType: TextInputType.number,
+        onChanged: (value) => _mileage = value,
+      ),
     );
   }
 
   Widget _buildFindingsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Inspection Findings',
-              style: Theme.of(context).textTheme.titleLarge,
+    return _buildSection(
+      title: 'Inspection Findings',
+      icon: Icons.plagiarism_outlined,
+      trailing: IconButton(
+        onPressed: _addFinding,
+        icon: const Icon(Icons.add_circle, color: Colors.blue),
+        tooltip: 'Add Finding',
+      ),
+      child: Column(
+        children: [
+          if (_findings.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.0),
+                child: Text('No findings added yet.'),
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _findings.length,
+              itemBuilder: (context, index) {
+                final finding = _findings[index];
+                return _buildFindingItem(index, finding);
+              },
             ),
-            IconButton(onPressed: _addFinding, icon: const Icon(Icons.add)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ..._findings.asMap().entries.map((entry) {
-          final index = entry.key;
-          final finding = entry.value;
-          return _buildFindingItem(index, finding);
-        }),
-        if (_findings.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('No findings added yet. Tap + to add findings.'),
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildFindingItem(int index, Map<String, dynamic> finding) {
     return Card(
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
       child: ListTile(
         title: Text(finding['title'] ?? 'Finding ${index + 1}'),
         subtitle: Text(finding['description'] ?? ''),
         trailing: IconButton(
           onPressed: () => _removeFinding(index),
-          icon: const Icon(Icons.delete, color: Colors.red),
+          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
         ),
         onTap: () => _editFinding(index, finding),
       ),
@@ -728,46 +778,52 @@ class _UnifiedSessionActivityScreenState
   }
 
   Widget _buildObservationsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Test Drive Observations',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            IconButton(onPressed: _addObservation, icon: const Icon(Icons.add)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ..._observations.asMap().entries.map((entry) {
-          final index = entry.key;
-          final observation = entry.value;
-          return _buildObservationItem(index, observation);
-        }),
-        if (_observations.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'No observations added yet. Tap + to add observations.',
+    return _buildSection(
+      title: 'Test Drive Observations',
+      icon: Icons.visibility_outlined,
+      trailing: IconButton(
+        onPressed: _addObservation,
+        icon: const Icon(Icons.add_circle, color: Colors.blue),
+        tooltip: 'Add Observation',
+      ),
+      child: Column(
+        children: [
+          if (_observations.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.0),
+                child: Text('No observations added yet.'),
               ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _observations.length,
+              itemBuilder: (context, index) {
+                final observation = _observations[index];
+                return _buildObservationItem(index, observation);
+              },
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildObservationItem(int index, Map<String, dynamic> observation) {
     return Card(
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
       child: ListTile(
         title: Text(observation['title'] ?? 'Observation ${index + 1}'),
         subtitle: Text(observation['description'] ?? ''),
         trailing: IconButton(
           onPressed: () => _removeObservation(index),
-          icon: const Icon(Icons.delete, color: Colors.red),
+          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
         ),
         onTap: () => _editObservation(index, observation),
       ),
@@ -775,150 +831,135 @@ class _UnifiedSessionActivityScreenState
   }
 
   Widget _buildReportDataSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Report Configuration',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextFormField(
-                  decoration: const InputDecoration(labelText: 'Report Title'),
-                  initialValue: _reportData['title']?.toString() ?? '',
-                  onChanged: (value) => _reportData['title'] = value,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  decoration: const InputDecoration(labelText: 'Summary'),
-                  maxLines: 3,
-                  initialValue: _reportData['summary']?.toString() ?? '',
-                  onChanged: (value) => _reportData['summary'] = value,
-                ),
-              ],
+    return _buildSection(
+      title: 'Report Configuration',
+      icon: Icons.settings_outlined,
+      child: Column(
+        children: [
+          TextFormField(
+            decoration: const InputDecoration(
+              labelText: 'Report Title',
+              border: OutlineInputBorder(),
             ),
+            initialValue: _reportData['title']?.toString() ?? '',
+            onChanged: (value) => _reportData['title'] = value,
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          TextFormField(
+            decoration: const InputDecoration(
+              labelText: 'Summary',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+            initialValue: _reportData['summary']?.toString() ?? '',
+            onChanged: (value) => _reportData['summary'] = value,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildImagesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Media', style: Theme.of(context).textTheme.titleLarge),
-            Row(
-              children: [
-                IconButton(
-                  onPressed: _addImage,
-                  icon: const Icon(Icons.add_photo_alternate),
-                  tooltip: 'Add Images',
-                ),
-                IconButton(
-                  onPressed: _addVideo,
-                  icon: const Icon(Icons.videocam),
-                  tooltip: 'Add Videos',
-                ),
-              ],
+    return _buildSection(
+      title: 'Media',
+      icon: Icons.perm_media,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: _addImage,
+            icon: const Icon(Icons.add_photo_alternate, color: Colors.green),
+            tooltip: 'Add Images',
+          ),
+          IconButton(
+            onPressed: _addVideo,
+            icon: const Icon(Icons.videocam, color: Colors.orange),
+            tooltip: 'Add Videos',
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Images section
+          if (_images.isNotEmpty || _pendingImages.isNotEmpty) ...[
+            Text(
+              'Images (${_images.length + _pendingImages.length})',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
+            const SizedBox(height: 8),
+            ImageGridWidget(
+              uploadedImageUrls: _images,
+              selectedImages: _pendingImages,
+              isEditing: true,
+              uploadProgress: _imageUploadProgress,
+              uploadCompleted: _imageUploadCompleted,
+              onRemoveUploadedImage: (index) async {
+                await _removeImage(index);
+              },
+              onRemoveSelectedImage: (index) {
+                setState(() {
+                  final File imageToRemove = _pendingImages[index];
+                  _pendingImages.removeAt(index);
+                  // Clean up progress tracking
+                  _imageUploadProgress.remove(imageToRemove.path);
+                  _imageUploadCompleted.remove(imageToRemove.path);
+                });
+              },
+            ),
+            const SizedBox(height: 16),
           ],
-        ),
-        const SizedBox(height: 8),
 
-        // Images section
-        if (_images.isNotEmpty || _pendingImages.isNotEmpty) ...[
-          Text(
-            'Images (${_images.length + _pendingImages.length})',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          ImageGridWidget(
-            uploadedImageUrls: _images,
-            selectedImages: _pendingImages,
-            isEditing: true,
-            uploadProgress: _imageUploadProgress,
-            uploadCompleted: _imageUploadCompleted,
-            onRemoveUploadedImage: (index) async {
-              await _removeImage(index);
-            },
-            onRemoveSelectedImage: (index) {
-              setState(() {
-                final File imageToRemove = _pendingImages[index];
-                _pendingImages.removeAt(index);
-                // Clean up progress tracking
-                _imageUploadProgress.remove(imageToRemove.path);
-                _imageUploadCompleted.remove(imageToRemove.path);
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        // Videos section
-        if (_videos.isNotEmpty || _pendingVideos.isNotEmpty) ...[
-          Text(
-            'Videos (${_videos.length + _pendingVideos.length})',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          _buildVideosList(),
-        ],
-
-        // Empty state
-        if (_images.isEmpty &&
-            _pendingImages.isEmpty &&
-            _videos.isEmpty &&
-            _pendingVideos.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('No media added yet. Tap + to add images or videos.'),
+          // Videos section
+          if (_videos.isNotEmpty || _pendingVideos.isNotEmpty) ...[
+            Text(
+              'Videos (${_videos.length + _pendingVideos.length})',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-          ),
-      ],
+            const SizedBox(height: 8),
+            _buildVideosList(),
+          ],
+
+          // Empty state
+          if (_images.isEmpty &&
+              _pendingImages.isEmpty &&
+              _videos.isEmpty &&
+              _pendingVideos.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.0),
+                child: Text('No media added yet.'),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildRequestsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Service Requests',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            IconButton(onPressed: _addRequest, icon: const Icon(Icons.add)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        RequestListWidget(
-          requests: _requests,
-          isEditing: true,
-          onRemoveRequest: (request) {
-            setState(() => _requests.remove(request));
-          },
-          onEditArgancy: (request, newUrgency) {
-            setState(() {
-              final index = _requests.indexOf(request);
-              if (index != -1) {
-                _requests[index]['argancy'] = newUrgency;
-              }
-            });
-          },
-        ),
-      ],
+    return _buildSection(
+      title: 'Service Requests',
+      icon: Icons.build,
+      trailing: IconButton(
+        onPressed: _addRequest,
+        icon: const Icon(Icons.add_circle, color: Colors.blue),
+        tooltip: 'Add Request',
+      ),
+      child: RequestListWidget(
+        requests: _requests,
+        isEditing: true,
+        onRemoveRequest: (request) {
+          setState(() => _requests.remove(request));
+        },
+        onEditArgancy: (request, newUrgency) {
+          setState(() {
+            final index = _requests.indexOf(request);
+            if (index != -1) {
+              _requests[index]['argancy'] = newUrgency;
+            }
+          });
+        },
+      ),
     );
   }
 
@@ -945,25 +986,48 @@ class _UnifiedSessionActivityScreenState
 
     Get.dialog(
       AlertDialog(
-        title: Text(index != null ? 'Edit Finding' : 'Add Finding'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            const Icon(Icons.plagiarism_outlined, color: Colors.blue),
+            const SizedBox(width: 10),
+            Text(index != null ? 'Edit Finding' : 'Add Finding'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: titleController,
-              decoration: const InputDecoration(labelText: 'Finding Title'),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Finding Title',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: 'Description'),
+              decoration: InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
               maxLines: 3,
             ),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          TextButton(
+          FilledButton(
             onPressed: () {
               final newFinding = {
                 'title': titleController.text.trim(),
@@ -981,6 +1045,11 @@ class _UnifiedSessionActivityScreenState
 
               Get.back();
             },
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text('Save'),
           ),
         ],
@@ -1011,25 +1080,48 @@ class _UnifiedSessionActivityScreenState
 
     Get.dialog(
       AlertDialog(
-        title: Text(index != null ? 'Edit Observation' : 'Add Observation'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        title: Row(
+          children: [
+            const Icon(Icons.visibility_outlined, color: Colors.blue),
+            const SizedBox(width: 10),
+            Text(index != null ? 'Edit Observation' : 'Add Observation'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: titleController,
-              decoration: const InputDecoration(labelText: 'Observation Title'),
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Observation Title',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: 'Description'),
+              decoration: InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
               maxLines: 3,
             ),
           ],
         ),
         actions: [
           TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          TextButton(
+          FilledButton(
             onPressed: () {
               final newObservation = {
                 'title': titleController.text.trim(),
@@ -1047,6 +1139,11 @@ class _UnifiedSessionActivityScreenState
 
               Get.back();
             },
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text('Save'),
           ),
         ],

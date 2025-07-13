@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:gixat4wk/screens/sessions/old/create_session_screen.dart';
 import 'package:gixat4wk/screens/sessions/session_details_screen.dart';
 import '../../controllers/auth_controller.dart';
@@ -23,237 +22,197 @@ class SessionsScreen extends StatelessWidget {
     final List<String> statusOptions = ['OPEN', 'TESTED', 'INSPECTED', 'NOTED'];
 
     void showStatusFilterDialog() {
-      showCupertinoModalPopup(
+      showModalBottomSheet(
         context: context,
-        builder:
-            (context) => CupertinoActionSheet(
-              title: const Text('Filter by Status'),
-              message: const Text('Select status types to filter'),
-              actions: [
-                ...statusOptions.map(
-                  (status) => CupertinoActionSheetAction(
-                    onPressed: () {
-                      if (selectedStatusFilters.contains(status)) {
-                        selectedStatusFilters.remove(status);
-                      } else {
-                        selectedStatusFilters.add(status);
-                      }
-                      Navigator.of(context).pop();
-                    },
-                    isDefaultAction: selectedStatusFilters.contains(status),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Filter by Status',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...statusOptions.map((status) {
+                      return CheckboxListTile(
+                        title: Text(SessionUtils.formatStatus(status)),
+                        value: selectedStatusFilters.contains(status),
+                        onChanged: (bool? value) {
+                          setModalState(() {
+                            if (value == true) {
+                              selectedStatusFilters.add(status);
+                            } else {
+                              selectedStatusFilters.remove(status);
+                            }
+                          });
+                        },
+                        secondary: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: SessionUtils.getStatusColor(status),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    }).toList(),
+                    const SizedBox(height: 20),
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: SessionUtils.getStatusColor(status),
-                                shape: BoxShape.circle,
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () {
+                              setModalState(() {
+                                selectedStatusFilters.clear();
+                              });
+                            },
+                            child: const Text('Clear All'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(SessionUtils.formatStatus(status)),
-                          ],
+                            child: const Text('Apply Filters'),
+                          ),
                         ),
-                        if (selectedStatusFilters.contains(status))
-                          const Icon(CupertinoIcons.check_mark, size: 18),
                       ],
                     ),
-                  ),
+                  ],
                 ),
-              ],
-              cancelButton: CupertinoActionSheetAction(
-                onPressed: () {
-                  selectedStatusFilters.clear();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Clear Filters'),
-              ),
-            ),
+              );
+            },
+          );
+        },
       );
     }
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Sessions',
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: () => Get.to(() => const CreateSessionScreen()),
+            tooltip: 'Create Session',
+          ),
+        ],
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Search and Filter Bar
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Sessions',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black, // Ensure title is black
+                Expanded(
+                  child: TextField(
+                    controller: searchController,
+                    onChanged: (value) {
+                      searchQuery.value = value.trim().toLowerCase();
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search by client, car, or plate...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.add,
-                    color: Colors.black,
-                  ), // Black icon
-                  onPressed: () => Get.to(() => const CreateSessionScreen()),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            CupertinoFormSection.insetGrouped(
-              backgroundColor: Colors.transparent,
-              margin: EdgeInsets.zero,
-              children: [
-                CupertinoFormRow(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 0,
-                    vertical: 0,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CupertinoSearchTextField(
-                          controller: searchController,
-                          onChanged: (value) {
-                            searchQuery.value = value.trim().toLowerCase();
-                          },
-                          placeholder: 'Search by client, car, or plate',
-                          placeholderStyle: const TextStyle(
-                            color: CupertinoColors.systemGrey2,
-                          ),
-                          style: const TextStyle(
-                            color: Colors.black,
-                          ), // Black text
-                          borderRadius: BorderRadius.circular(10),
-                          backgroundColor: CupertinoColors.systemGrey6,
-                          prefixInsets: const EdgeInsets.only(
-                            left: 8,
-                            right: 8,
-                          ),
-                          suffixInsets: const EdgeInsets.only(right: 8),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Obx(
-                        () => GestureDetector(
-                          onTap: showStatusFilterDialog,
-                          child: Container(
-                            height: 36,
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  CupertinoIcons.line_horizontal_3_decrease,
-                                  color:
-                                      selectedStatusFilters.isNotEmpty
-                                          ? Colors
-                                              .red // Use red for active
-                                          : Colors.black, // Black for inactive
-                                  size: 16,
-                                ),
-                                if (selectedStatusFilters.isNotEmpty) ...[
-                                  const SizedBox(width: 4),
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.red, // Red badge
-                                    ),
-                                    child: Text(
-                                      selectedStatusFilters.length.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
+                const SizedBox(width: 12),
+                Obx(
+                  () => Badge(
+                    isLabelVisible: selectedStatusFilters.isNotEmpty,
+                    label: Text(selectedStatusFilters.length.toString()),
+                    child: IconButton(
+                      onPressed: showStatusFilterDialog,
+                      icon: const Icon(Icons.filter_list),
+                      tooltip: 'Filter by Status',
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // Status filter chips
+
+            // Active Filter Chips
             Obx(
               () =>
                   selectedStatusFilters.isNotEmpty
                       ? SizedBox(
-                        height: 32,
+                        height: 36,
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children:
                               selectedStatusFilters
                                   .map(
                                     (status) => Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
+                                      padding: const EdgeInsets.only(
+                                        right: 8.0,
+                                      ),
+                                      child: Chip(
+                                        avatar: CircleAvatar(
+                                          backgroundColor:
+                                              SessionUtils.getStatusColor(
+                                                status,
+                                              ),
+                                          radius: 6,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: CupertinoColors.systemGrey6,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
+                                        label: Text(
+                                          SessionUtils.formatStatus(status),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
                                           ),
-                                          border: Border.all(
+                                        ),
+                                        onDeleted:
+                                            () => selectedStatusFilters.remove(
+                                              status,
+                                            ),
+                                        backgroundColor:
+                                            SessionUtils.getStatusColor(
+                                              status,
+                                            ).withOpacity(0.1),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          side: BorderSide(
                                             color: SessionUtils.getStatusColor(
                                               status,
-                                            ).withAlpha(52),
-                                            width: 1,
+                                            ).withOpacity(0.2),
                                           ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    SessionUtils.getStatusColor(
-                                                      status,
-                                                    ),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              SessionUtils.formatStatus(status),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color:
-                                                    Colors.black, // Black text
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            GestureDetector(
-                                              onTap:
-                                                  () => selectedStatusFilters
-                                                      .remove(status),
-                                              child: const Icon(
-                                                CupertinoIcons
-                                                    .xmark_circle_fill,
-                                                size: 14,
-                                                color:
-                                                    Colors.black, // Black icon
-                                              ),
-                                            ),
-                                          ],
                                         ),
                                       ),
                                     ),
@@ -266,6 +225,8 @@ class SessionsScreen extends StatelessWidget {
             selectedStatusFilters.isNotEmpty
                 ? const SizedBox(height: 8)
                 : const SizedBox.shrink(),
+
+            // Session List
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: databaseService.queryCollection('sessions', [
@@ -282,22 +243,19 @@ class SessionsScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.feed_outlined,
+                            Icons.car_repair,
                             size: 64,
                             color: Colors.grey[400],
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            'No active sessions found',
-                            style: TextStyle(
-                              color: Colors.black, // Black text
-                              fontSize: 18,
-                            ),
+                          const Text(
+                            'No Active Sessions',
+                            style: TextStyle(fontSize: 18),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Start a new session to see it here',
-                            style: TextStyle(color: Colors.black), // Black text
+                            'Start a new session to see it here.',
+                            style: TextStyle(color: Colors.grey[600]),
                           ),
                         ],
                       ),
@@ -321,7 +279,7 @@ class SessionsScreen extends StatelessWidget {
 
                     var filteredSessions = sessions;
 
-                    // Apply text search filter if query is not empty
+                    // Apply text search filter
                     if (query.isNotEmpty) {
                       filteredSessions =
                           filteredSessions.where((session) {
@@ -348,7 +306,7 @@ class SessionsScreen extends StatelessWidget {
                           }).toList();
                     }
 
-                    // Apply status filters if any are selected
+                    // Apply status filters
                     if (statusFilters.isNotEmpty) {
                       filteredSessions =
                           filteredSessions.where((session) {
@@ -369,12 +327,9 @@ class SessionsScreen extends StatelessWidget {
                               color: Colors.grey[400],
                             ),
                             const SizedBox(height: 16),
-                            Text(
+                            const Text(
                               'No sessions match your filters',
-                              style: TextStyle(
-                                color: Colors.black, // Black text
-                                fontSize: 18,
-                              ),
+                              style: TextStyle(fontSize: 18),
                             ),
                             const SizedBox(height: 8),
                             TextButton.icon(
@@ -383,14 +338,8 @@ class SessionsScreen extends StatelessWidget {
                                 searchQuery.value = '';
                                 selectedStatusFilters.clear();
                               },
-                              icon: const Icon(
-                                Icons.refresh,
-                                color: Colors.black,
-                              ),
-                              label: const Text(
-                                'Clear all filters',
-                                style: TextStyle(color: Colors.black),
-                              ),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Clear All Filters'),
                             ),
                           ],
                         ),
@@ -398,52 +347,11 @@ class SessionsScreen extends StatelessWidget {
                     }
 
                     return ListView.builder(
+                      padding: const EdgeInsets.only(top: 8),
                       itemCount: filteredSessions.length,
                       itemBuilder: (context, index) {
                         final session = filteredSessions[index];
-                        final car = session.car;
-                        final client = session.client;
-
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: SessionUtils.getStatusColor(
-                                session.status,
-                              ),
-                              child: Icon(
-                                SessionUtils.getStatusIcon(session.status),
-                                color: Colors.white,
-                              ),
-                            ),
-                            title: Text(
-                              '${car['make']} ${car['model']} (${car['plateNumber']})',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                color: Colors.black,
-                              ), // Black text
-                            ),
-                            subtitle: Row(
-                              children: [
-                                Text(
-                                  '${client['name']} ',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.black,
-                                  ), // Black text
-                                ),
-                              ],
-                            ),
-                            onTap: () {
-                              // Navigate to session details page
-                              Get.to(
-                                () => SessionDetailsScreen(session: session),
-                              );
-                            },
-                          ),
-                        );
+                        return _SessionCard(session: session);
                       },
                     );
                   });
@@ -451,6 +359,95 @@ class SessionsScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SessionCard extends StatelessWidget {
+  final Session session;
+
+  const _SessionCard({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final car = session.car;
+    final client = session.client;
+    final statusColor = SessionUtils.getStatusColor(session.status);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
+      elevation: 1.5,
+      shadowColor: Colors.black.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => Get.to(() => SessionDetailsScreen(session: session)),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${car['make']} ${car['model']}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(backgroundColor: statusColor, radius: 4),
+                        const SizedBox(width: 6),
+                        Text(
+                          SessionUtils.formatStatus(session.status),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Plate: ${car['plateNumber'] ?? 'N/A'}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+              const Divider(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.person_outline, size: 14, color: Colors.grey[700]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Client: ${client['name'] ?? 'Unknown'}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

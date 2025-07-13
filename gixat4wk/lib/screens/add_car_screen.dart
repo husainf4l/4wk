@@ -7,6 +7,7 @@ import '../models/car.dart';
 import '../models/session.dart';
 import '../services/car_service.dart';
 import '../services/car_data_service.dart';
+import '../services/session/activity_service.dart';
 import '../screens/sessions/session_details_screen.dart';
 
 class AddCarScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final CarService _carService = CarService();
   final AuthController _authController = Get.find<AuthController>();
   final CarDataService _carDataService = CarDataService();
+  final ActivityService _activityService = ActivityService();
 
   // Add controllers for text fields
   final TextEditingController _makeController = TextEditingController();
@@ -131,9 +133,18 @@ class _AddCarScreenState extends State<AddCarScreen> {
         final carId = result['carId'] ?? '';
         final sessionId = result['sessionId'] ?? '';
 
+        // Create an activity to log that the session was opened
+        await _activityService.logActivity(
+          sessionId: sessionId,
+          title: 'Session Opened',
+          type: 'session_opened',
+          description:
+              'Session opened for ${newCar.make} ${newCar.model} (${newCar.plateNumber})',
+        );
+
         Get.snackbar(
           'Success',
-          'Car added successfully.',
+          'Car added and session opened successfully.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,
