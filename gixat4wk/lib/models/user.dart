@@ -61,6 +61,42 @@ class User {
     };
   }
 
+  // Convert User to Map for caching
+  Map<String, dynamic> toMap() {
+    return {
+      'uid': uid,
+      'email': email,
+      'displayName': displayName,
+      'photoURL': photoURL,
+      'phoneNumber': phoneNumber,
+      'garageId': garageId,
+      'createdAt': createdAt?.millisecondsSinceEpoch,
+      'lastLoginAt': lastLoginAt?.millisecondsSinceEpoch,
+      'isActive': isActive,
+    };
+  }
+
+  // Create User from Map (for caching)
+  factory User.fromMap(Map<String, dynamic> map) {
+    return User(
+      uid: map['uid'] ?? '',
+      email: map['email'] ?? '',
+      displayName: map['displayName'],
+      photoURL: map['photoURL'],
+      phoneNumber: map['phoneNumber'],
+      garageId: map['garageId'],
+      createdAt:
+          map['createdAt'] != null
+              ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'])
+              : null,
+      lastLoginAt:
+          map['lastLoginAt'] != null
+              ? DateTime.fromMillisecondsSinceEpoch(map['lastLoginAt'])
+              : null,
+      isActive: map['isActive'] ?? true,
+    );
+  }
+
   // Create a copy of User with updated fields
   User copyWith({
     String? displayName,
