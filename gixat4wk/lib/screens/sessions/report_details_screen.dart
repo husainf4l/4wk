@@ -958,12 +958,12 @@ class _ReportDetailsScreenState extends State<ReportDetailsScreen> {
                     updateFunction(updatedItem);
                     Navigator.of(context).pop();
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                  ),
                   child: const Text(
                     'SAVE',
                     style: TextStyle(color: Colors.black),
-                  ), // Black text
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
                   ),
                 ),
               ],

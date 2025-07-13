@@ -32,12 +32,12 @@ class ReportSectionWidget extends StatelessWidget {
                 border: Border.all(
                   color:
                       theme.brightness == Brightness.light
-                          ? Colors.grey.withOpacity(0.2)
-                          : Colors.white.withOpacity(0.1),
+                          ? Colors.grey.withValues(alpha: 0.2)
+                          : Colors.white.withValues(alpha: 0.1),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),
@@ -51,7 +51,7 @@ class ReportSectionWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: theme.primaryColor.withOpacity(0.1),
+              color: theme.primaryColor.withValues(alpha: 0.1),
               borderRadius:
                   hasBorder
                       ? const BorderRadius.only(

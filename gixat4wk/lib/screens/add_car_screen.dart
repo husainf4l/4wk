@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'dart:async';
 import '../controllers/auth_controller.dart';
 import '../models/car.dart';
 import '../models/session.dart';
 import '../services/car_service.dart';
+import '../services/car_data_service.dart';
 import '../screens/sessions/session_details_screen.dart';
 
 class AddCarScreen extends StatefulWidget {
@@ -18,6 +20,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final _formKey = GlobalKey<FormState>();
   final CarService _carService = CarService();
   final AuthController _authController = Get.find<AuthController>();
+  final CarDataService _carDataService = CarDataService();
 
   // Add controllers for text fields
   final TextEditingController _makeController = TextEditingController();
@@ -39,6 +42,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
   String _plateNumber = '';
   String _vin = '';
   bool _isLoading = false;
+  String _selectedMake = ''; // Track selected make for model autocomplete
+  Timer? _debounceTimer;
+  List<String> _cachedMakes = [];
+  Map<String, List<String>> _cachedModels = {};
 
   // Client data passed from previous screen
   late String _clientId;
@@ -69,6 +76,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     // Dispose of controllers
     _makeController.dispose();
     _modelController.dispose();
@@ -113,6 +121,9 @@ class _AddCarScreenState extends State<AddCarScreen> {
             args['clientPhoneNumber'] ?? 'Unknown', // Added client phone number
         garageId: _authController.currentUser?.garageId ?? '',
       );
+
+      // Save make/model to Firestore for future autocomplete
+      await _carDataService.addCarMakeAndModel(_make, _model);
 
       final result = await _carService.addCarAndCreateSession(newCar);
 
@@ -181,6 +192,338 @@ class _AddCarScreenState extends State<AddCarScreen> {
     }
   }
 
+  Widget _buildMakeAutocomplete() {
+    return Autocomplete<String>(
+      optionsBuilder: (TextEditingValue textEditingValue) async {
+        if (textEditingValue.text.isEmpty) {
+          return const Iterable<String>.empty();
+        }
+
+        // Debounce Firestore calls
+        _debounceTimer?.cancel();
+        final completer = Completer<List<String>>();
+
+        _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+          try {
+            // Use cached makes if available
+            if (_cachedMakes.isEmpty) {
+              _cachedMakes = await _carDataService.fetchCarMakes();
+            }
+
+            final filteredMakes = _cachedMakes.where(
+              (make) => make.toLowerCase().contains(
+                textEditingValue.text.toLowerCase(),
+              ),
+            );
+            completer.complete(filteredMakes.toList());
+          } catch (e) {
+            completer.complete([]);
+          }
+        });
+
+        return completer.future;
+      },
+      onSelected: (String selection) {
+        _makeController.text = selection;
+        _make = selection;
+        setState(() {
+          _selectedMake = selection;
+          // Clear model when make changes
+          _modelController.clear();
+          _model = '';
+        });
+      },
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        // Sync with our controller
+        if (_makeController.text != controller.text) {
+          controller.text = _makeController.text;
+        }
+
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            labelText: 'Make',
+            hintText: 'Toyota, Honda, etc.',
+            prefixIcon: const Icon(Icons.directions_car),
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) {
+            FocusScope.of(context).requestFocus(_modelFocus);
+          },
+          onChanged: (value) {
+            _makeController.text = value;
+            _make = value;
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter car make';
+            }
+            return null;
+          },
+          onSaved: (value) {
+            _make = value!;
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildModelAutocomplete() {
+    return Autocomplete<String>(
+      optionsBuilder: (TextEditingValue textEditingValue) async {
+        if (textEditingValue.text.isEmpty || _selectedMake.isEmpty) {
+          return const Iterable<String>.empty();
+        }
+
+        // Debounce Firestore calls
+        _debounceTimer?.cancel();
+        final completer = Completer<List<String>>();
+
+        _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+          try {
+            // Use cached models if available
+            if (!_cachedModels.containsKey(_selectedMake)) {
+              _cachedModels[_selectedMake] = await _carDataService
+                  .fetchCarModels(_selectedMake);
+            }
+
+            final models = _cachedModels[_selectedMake] ?? [];
+            final filteredModels = models.where(
+              (model) => model.toLowerCase().contains(
+                textEditingValue.text.toLowerCase(),
+              ),
+            );
+            completer.complete(filteredModels.toList());
+          } catch (e) {
+            completer.complete([]);
+          }
+        });
+
+        return completer.future;
+      },
+      onSelected: (String selection) {
+        _modelController.text = selection;
+        _model = selection;
+      },
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        // Sync with our controller
+        if (_modelController.text != controller.text) {
+          controller.text = _modelController.text;
+        }
+
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            labelText: 'Model',
+            hintText:
+                _selectedMake.isEmpty
+                    ? 'Select make first'
+                    : 'Corolla, Civic, etc.',
+            prefixIcon: const Icon(Icons.car_rental),
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          enabled: _selectedMake.isNotEmpty,
+          textInputAction: TextInputAction.next,
+          onFieldSubmitted: (_) {
+            FocusScope.of(context).requestFocus(_yearFocus);
+          },
+          onChanged: (value) {
+            _modelController.text = value;
+            _model = value;
+          },
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter car model';
+            }
+            return null;
+          },
+          onSaved: (value) {
+            _model = value!;
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildYearField() {
+    return TextFormField(
+      controller: _yearController,
+      decoration: InputDecoration(
+        labelText: 'Year',
+        hintText: 'Enter year of manufacture',
+        prefixIcon: const Icon(Icons.calendar_today),
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+      ),
+      focusNode: _yearFocus,
+      textInputAction: TextInputAction.next,
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(4),
+      ],
+      onFieldSubmitted: (_) {
+        FocusScope.of(context).requestFocus(_plateNumberFocus);
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter year';
+        }
+        final yearValue = int.tryParse(value);
+        if (yearValue == null) {
+          return 'Please enter a valid year';
+        }
+        if (yearValue < 1900 || yearValue > DateTime.now().year + 1) {
+          return 'Please enter a valid year between 1900 and ${DateTime.now().year + 1}';
+        }
+        return null;
+      },
+      onSaved: (value) {
+        _year = int.parse(value!);
+      },
+    );
+  }
+
+  Widget _buildPlateNumberField() {
+    return TextFormField(
+      controller: _plateNumberController,
+      decoration: InputDecoration(
+        labelText: 'Plate Number',
+        hintText: 'Enter vehicle plate number',
+        prefixIcon: const Icon(Icons.credit_card),
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+      ),
+      focusNode: _plateNumberFocus,
+      textInputAction: TextInputAction.next,
+      textCapitalization: TextCapitalization.characters,
+      onFieldSubmitted: (_) {
+        FocusScope.of(context).requestFocus(_vinFocus);
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter plate number';
+        }
+        return null;
+      },
+      onSaved: (value) {
+        _plateNumber = value!.toUpperCase();
+      },
+    );
+  }
+
+  Widget _buildVinField() {
+    return TextFormField(
+      controller: _vinController,
+      decoration: InputDecoration(
+        labelText: 'VIN (Optional)',
+        hintText: 'Enter vehicle identification number',
+        prefixIcon: const Icon(Icons.vpn_key),
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+      ),
+      focusNode: _vinFocus,
+      textInputAction: TextInputAction.done,
+      textCapitalization: TextCapitalization.characters,
+      onFieldSubmitted: (_) {
+        if (!_isLoading) {
+          _saveCar();
+        }
+      },
+      onSaved: (value) {
+        _vin = value != null ? value.toUpperCase() : '';
+      },
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      width: double.infinity,
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          colors: [Colors.blue[600]!, Colors.blue[700]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _saveCar,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child:
+            _isLoading
+                ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+                : const Text(
+                  'SAVE CAR',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -228,150 +571,17 @@ class _AddCarScreenState extends State<AddCarScreen> {
                   key: _formKey,
                   child: ListView(
                     children: [
-                      TextFormField(
-                        controller: _makeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Make',
-                          prefixIcon: Icon(Icons.directions_car),
-                          border: OutlineInputBorder(),
-                          hintText: 'Toyota, Honda, etc.',
-                        ),
-                        focusNode: _makeFocus,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (_) {
-                          FocusScope.of(context).requestFocus(_modelFocus);
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter car make';
-                          }
-                          return null;
-                        },
-                        onSaved: (value) {
-                          _make = value!;
-                        },
-                      ),
+                      _buildMakeAutocomplete(),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _modelController,
-                        decoration: const InputDecoration(
-                          labelText: 'Model',
-                          prefixIcon: Icon(Icons.car_rental),
-                          border: OutlineInputBorder(),
-                          hintText: 'Corolla, Civic, etc.',
-                        ),
-                        focusNode: _modelFocus,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (_) {
-                          FocusScope.of(context).requestFocus(_yearFocus);
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter car model';
-                          }
-                          return null;
-                        },
-                        onSaved: (value) {
-                          _model = value!;
-                        },
-                      ),
+                      _buildModelAutocomplete(),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _yearController,
-                        decoration: const InputDecoration(
-                          labelText: 'Year',
-                          prefixIcon: Icon(Icons.calendar_today),
-                          border: OutlineInputBorder(),
-                          hintText: 'Enter year of manufacture',
-                        ),
-                        focusNode: _yearFocus,
-                        textInputAction: TextInputAction.next,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(4),
-                        ],
-                        onFieldSubmitted: (_) {
-                          FocusScope.of(
-                            context,
-                          ).requestFocus(_plateNumberFocus);
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter year';
-                          }
-                          final yearValue = int.tryParse(value);
-                          if (yearValue == null) {
-                            return 'Please enter a valid year';
-                          }
-                          if (yearValue < 1900 ||
-                              yearValue > DateTime.now().year + 1) {
-                            return 'Please enter a valid year between 1900 and ${DateTime.now().year + 1}';
-                          }
-                          return null;
-                        },
-                        onSaved: (value) {
-                          _year = int.parse(value!);
-                        },
-                      ),
+                      _buildYearField(),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _plateNumberController,
-                        decoration: const InputDecoration(
-                          labelText: 'Plate Number',
-                          prefixIcon: Icon(Icons.credit_card),
-                          border: OutlineInputBorder(),
-                          hintText: 'Enter vehicle plate number',
-                        ),
-                        focusNode: _plateNumberFocus,
-                        textInputAction: TextInputAction.next,
-                        textCapitalization: TextCapitalization.characters,
-                        onFieldSubmitted: (_) {
-                          FocusScope.of(context).requestFocus(_vinFocus);
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter plate number';
-                          }
-                          return null;
-                        },
-                        onSaved: (value) {
-                          _plateNumber = value!.toUpperCase();
-                        },
-                      ),
+                      _buildPlateNumberField(),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _vinController,
-                        decoration: const InputDecoration(
-                          labelText: 'VIN (Optional)',
-                          prefixIcon: Icon(Icons.vpn_key),
-                          border: OutlineInputBorder(),
-                          hintText: 'Enter vehicle identification number',
-                        ),
-                        focusNode: _vinFocus,
-                        textInputAction: TextInputAction.done,
-                        textCapitalization: TextCapitalization.characters,
-                        onFieldSubmitted: (_) {
-                          // Submit the form when done is pressed on the last field
-                          if (!_isLoading) {
-                            _saveCar();
-                          }
-                        },
-                        onSaved: (value) {
-                          _vin = value != null ? value.toUpperCase() : '';
-                        },
-                      ),
+                      _buildVinField(),
                       const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _saveCar,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child:
-                            _isLoading
-                                ? const CircularProgressIndicator()
-                                : const Text('SAVE CAR'),
-                      ),
+                      _buildSaveButton(),
                     ],
                   ),
                 ),

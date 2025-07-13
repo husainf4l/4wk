@@ -11,7 +11,7 @@ import 'services/database_service.dart';
 import 'services/error_service.dart'; // Import the new error service
 import 'services/image_handling_service.dart'; // Import ImageHandlingService
 import 'services/chat_service.dart'; // Import ChatService
-import 'services/session_service.dart'; // Import SessionService
+// import 'services/aws_s3_service.dart'; // Import AWS S3 Service (disabled due to security)
 
 void main() async {
   // Ensure Flutter is initialized
@@ -38,11 +38,12 @@ void main() async {
     // Register ImageHandlingService
     Get.put(ImageHandlingService());
 
-    // Register SessionService
-    Get.put(SessionService());
-
     // Register ChatService
     await Get.putAsync(() => ChatService().init());
+
+    // Note: AWS S3 Service requires environment variables for credentials
+    // Comment out for now until proper environment configuration is set up
+    // Get.put(AwsS3Service());
 
     // Initialize the AuthController after services are set up
     Get.put(AuthController());

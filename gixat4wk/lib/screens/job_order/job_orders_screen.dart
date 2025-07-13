@@ -3,17 +3,13 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:gixat4wk/screens/job_order/job_order_request_history_screen.dart';
-import '../../controllers/auth_controller.dart';
-import '../../services/database_service.dart';
 
 class JobOrdersScreen extends StatelessWidget {
   const JobOrdersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final AuthController authController = Get.find<AuthController>();
     final theme = Theme.of(context);
-    final DatabaseService databaseService = Get.find<DatabaseService>();
     final TextEditingController searchController = TextEditingController();
     final RxString searchQuery = ''.obs;
 
@@ -216,7 +212,7 @@ class JobOrdersScreen extends StatelessWidget {
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: colorScheme.outline.withOpacity(0.18),
+                              color: colorScheme.outline.withValues(alpha: 0.18),
                               width: 1.2,
                             ),
                           ),
@@ -251,7 +247,7 @@ class JobOrdersScreen extends StatelessWidget {
                                         height: 38,
                                         decoration: BoxDecoration(
                                           color: colorScheme.primary
-                                              .withOpacity(0.12),
+                                              .withValues(alpha: 0.12),
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
@@ -287,7 +283,7 @@ class JobOrdersScreen extends StatelessWidget {
                                       Container(
                                         decoration: BoxDecoration(
                                           color: colorScheme.primary
-                                              .withOpacity(0.12),
+                                              .withValues(alpha: 0.12),
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
@@ -320,7 +316,7 @@ class JobOrdersScreen extends StatelessWidget {
 
                               Divider(
                                 height: 1,
-                                color: colorScheme.outline.withOpacity(0.10),
+                                color: colorScheme.outline.withValues(alpha: 0.10),
                               ),
 
                               // Tasks Section
@@ -419,7 +415,7 @@ class JobOrdersScreen extends StatelessWidget {
                                             ),
                                           ),
                                         );
-                                      }).toList(),
+                                      }),
                                     if (requests.isEmpty)
                                       Padding(
                                         padding: const EdgeInsets.only(top: 8),
@@ -450,26 +446,6 @@ class JobOrdersScreen extends StatelessWidget {
     );
   }
 
-  // Helper method to get status color
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return Colors.green;
-      case 'in progress':
-        return Colors.blue;
-      case 'pending':
-        return Colors.orange;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  // Helper method to format date
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
 
   // Helper method to update request status in Firestore
   Future<void> _updateRequestStatus({
@@ -510,18 +486,18 @@ class JobOrdersScreen extends StatelessWidget {
             'Task status updated successfully',
             snackPosition: SnackPosition.BOTTOM,
             duration: const Duration(seconds: 1),
-            backgroundColor: Colors.green.withOpacity(0.7),
+            backgroundColor: Colors.green.withValues(alpha: 0.7),
             colorText: Colors.white,
           );
         }
       }
     } catch (e) {
-      print('Error updating request status: $e');
+      debugPrint('Error updating request status: $e');
       Get.snackbar(
         'Error',
         'Failed to update task status',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.7),
+        backgroundColor: Colors.red.withValues(alpha: 0.7),
         colorText: Colors.white,
       );
     }

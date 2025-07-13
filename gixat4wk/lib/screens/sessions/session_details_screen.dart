@@ -333,7 +333,7 @@ class SessionDetailsScreen extends StatelessWidget {
                                   'Report Required',
                                   'Please complete the G Report first to create a Job Order.',
                                   snackPosition: SnackPosition.BOTTOM,
-                                  backgroundColor: Colors.red.withOpacity(0.7),
+                                  backgroundColor: Colors.red.withValues(alpha: 0.7),
                                   colorText: Colors.white,
                                 );
                                 return;

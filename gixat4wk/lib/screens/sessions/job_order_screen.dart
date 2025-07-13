@@ -88,7 +88,7 @@ class _JobOrderScreenState extends State<JobOrderScreen> {
           for (var request in reportData['clientRequests']) {
             jobOrderItems.add({
               'id':
-                  DateTime.now().millisecondsSinceEpoch.toString() + '_client',
+                  '${DateTime.now().millisecondsSinceEpoch}_client',
               'title': request['request'] ?? 'Unknown request',
               'notes': '',
               'source': 'client_request',
@@ -101,8 +101,7 @@ class _JobOrderScreenState extends State<JobOrderScreen> {
           for (var finding in reportData['inspectionFindings']) {
             jobOrderItems.add({
               'id':
-                  DateTime.now().millisecondsSinceEpoch.toString() +
-                  '_inspection',
+                  '${DateTime.now().millisecondsSinceEpoch}_inspection',
               'title': finding['finding'] ?? 'Unknown finding',
               'notes': '',
               'source': 'inspection_finding',
@@ -115,8 +114,7 @@ class _JobOrderScreenState extends State<JobOrderScreen> {
           for (var observation in reportData['testDriveObservations']) {
             jobOrderItems.add({
               'id':
-                  DateTime.now().millisecondsSinceEpoch.toString() +
-                  '_test_drive',
+                  '${DateTime.now().millisecondsSinceEpoch}_test_drive',
               'title': observation['observation'] ?? 'Unknown observation',
               'notes': '',
               'source': 'test_drive_observation',
@@ -215,7 +213,7 @@ class _JobOrderScreenState extends State<JobOrderScreen> {
           reportData['sessionId'] ?? reportData['session']?['id'] ?? '';
 
       if (sessionId.isEmpty) {
-        print('Warning: Could not find sessionId in report data');
+        debugPrint('Warning: Could not find sessionId in report data');
       }
 
       // Create the order document with the required structure
@@ -360,7 +358,7 @@ class _JobOrderScreenState extends State<JobOrderScreen> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
@@ -488,7 +486,7 @@ class _JobOrderScreenState extends State<JobOrderScreen> {
                         ),
                       ],
                       border: Border.all(
-                        color: Theme.of(context).dividerColor.withOpacity(0.1),
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
                       ),
                     ),
                     child: TextField(

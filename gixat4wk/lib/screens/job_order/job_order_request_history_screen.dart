@@ -56,7 +56,7 @@ class _JobOrderRequestHistoryScreenState
         'Error',
         'Failed to send note',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.9),
+        backgroundColor: Colors.red.withValues(alpha: 0.9),
         colorText: Colors.white,
         margin: const EdgeInsets.all(8),
       );
@@ -151,7 +151,7 @@ class _JobOrderRequestHistoryScreenState
                           Icon(
                             Icons.message_outlined,
                             size: 48,
-                            color: colorScheme.outline.withOpacity(0.6),
+                            color: colorScheme.outline.withValues(alpha: 0.6),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -165,7 +165,7 @@ class _JobOrderRequestHistoryScreenState
                           Text(
                             'Start the conversation!',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.outline.withOpacity(0.8),
+                              color: colorScheme.outline.withValues(alpha: 0.8),
                             ),
                           ),
                         ],
@@ -210,8 +210,8 @@ class _JobOrderRequestHistoryScreenState
                           decoration: BoxDecoration(
                             color:
                                 isCurrentUser
-                                    ? colorScheme.primary.withOpacity(0.15)
-                                    : colorScheme.surfaceVariant,
+                                    ? colorScheme.primary.withValues(alpha: 0.15)
+                                    : colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.only(
                               topLeft: const Radius.circular(18),
                               topRight: const Radius.circular(18),
@@ -224,7 +224,7 @@ class _JobOrderRequestHistoryScreenState
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 3,
                                 offset: const Offset(0, 1),
                               ),
@@ -269,7 +269,7 @@ class _JobOrderRequestHistoryScreenState
                               Text(
                                 timeString,
                                 style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.outline.withOpacity(0.8),
+                                  color: colorScheme.outline.withValues(alpha: 0.8),
                                   fontSize: 10,
                                 ),
                               ),
@@ -292,10 +292,10 @@ class _JobOrderRequestHistoryScreenState
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: colorScheme.surfaceVariant.withOpacity(0.5),
+                          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: colorScheme.outline.withOpacity(0.2),
+                            color: colorScheme.outline.withValues(alpha: 0.2),
                           ),
                         ),
                         child: TextField(
@@ -306,8 +306,8 @@ class _JobOrderRequestHistoryScreenState
                           decoration: InputDecoration(
                             hintText: 'Add a note...',
                             hintStyle: TextStyle(
-                              color: colorScheme.onSurfaceVariant.withOpacity(
-                                0.7,
+                              color: colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.7,
                               ),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
