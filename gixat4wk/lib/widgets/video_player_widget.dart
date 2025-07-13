@@ -37,7 +37,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
         _controller = VideoPlayerController.file(widget.videoFile!);
       } else if (widget.videoUrl != null) {
         // Network URL
-        _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl!));
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(widget.videoUrl!),
+        );
       } else {
         setState(() {
           _hasError = true;
@@ -76,9 +78,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Center(
-        child: _buildVideoContent(),
-      ),
+      body: Center(child: _buildVideoContent()),
     );
   }
 
@@ -89,10 +89,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
         children: [
           CircularProgressIndicator(color: Colors.white),
           SizedBox(height: 16),
-          Text(
-            'Loading video...',
-            style: TextStyle(color: Colors.white),
-          ),
+          Text('Loading video...', style: TextStyle(color: Colors.white)),
         ],
       );
     }
@@ -101,11 +98,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Colors.red,
-          ),
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
           Text(
             _errorMessage ?? 'Unknown error',
@@ -134,10 +127,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
         AspectRatio(
           aspectRatio: _controller!.value.aspectRatio,
           child: Stack(
-            children: [
-              VideoPlayer(_controller!),
-              _buildPlayPauseOverlay(),
-            ],
+            children: [VideoPlayer(_controller!), _buildPlayPauseOverlay()],
           ),
         ),
         const SizedBox(height: 20),
@@ -180,7 +170,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                     });
                   },
                   icon: Icon(
-                    _controller!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                    _controller!.value.isPlaying
+                        ? Icons.pause
+                        : Icons.play_arrow,
                     color: Colors.white,
                     size: 64,
                   ),
@@ -226,7 +218,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    
+
     if (duration.inHours > 0) {
       return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
     }
