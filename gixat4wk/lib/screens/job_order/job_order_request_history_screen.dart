@@ -18,10 +18,12 @@ class JobOrderRequestHistoryScreen extends StatefulWidget {
   });
 
   @override
-  State<JobOrderRequestHistoryScreen> createState() => _JobOrderRequestHistoryScreenState();
+  State<JobOrderRequestHistoryScreen> createState() =>
+      _JobOrderRequestHistoryScreenState();
 }
 
-class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScreen> {
+class _JobOrderRequestHistoryScreenState
+    extends State<JobOrderRequestHistoryScreen> {
   final Map<String, TextEditingController> _commentControllers = {};
 
   @override
@@ -729,7 +731,12 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
 
                             // Comments Section
                             const SizedBox(height: 12),
-                            _buildCommentsSection(context, request['id'], theme, colorScheme),
+                            _buildCommentsSection(
+                              context,
+                              request['id'],
+                              theme,
+                              colorScheme,
+                            ),
                           ],
                         ),
                       );
@@ -810,7 +817,8 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
 
   // Show dialog to add general job order comment
   void _showAddGeneralCommentDialog(BuildContext context) {
-    final TextEditingController generalCommentController = TextEditingController();
+    final TextEditingController generalCommentController =
+        TextEditingController();
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -853,15 +861,15 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
               generalCommentController.dispose();
               Get.back();
             },
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: colorScheme.outline),
-            ),
+            child: Text('Cancel', style: TextStyle(color: colorScheme.outline)),
           ),
           ElevatedButton(
             onPressed: () async {
               if (generalCommentController.text.trim().isNotEmpty) {
-                await _addComment('general', generalCommentController.text.trim());
+                await _addComment(
+                  'general',
+                  generalCommentController.text.trim(),
+                );
                 generalCommentController.dispose();
                 Get.back();
               }
@@ -871,6 +879,216 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
               foregroundColor: colorScheme.onPrimary,
             ),
             child: const Text('Add Comment'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build general comments section for the job order
+  Widget _buildGeneralCommentsSection(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  color: colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'General Comments',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const Spacer(),
+                StreamBuilder<QuerySnapshot>(
+                  stream:
+                      FirebaseFirestore.instance
+                          .collection('jobOrders')
+                          .doc(widget.jobOrderId)
+                          .collection('comments')
+                          .where('requestId', isEqualTo: 'general')
+                          .snapshots(),
+                  builder: (context, snapshot) {
+                    final commentCount =
+                        snapshot.hasData ? snapshot.data!.docs.length : 0;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$commentCount comment${commentCount == 1 ? '' : 's'}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Comments List
+          StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('jobOrders')
+                    .doc(widget.jobOrderId)
+                    .collection('comments')
+                    .where('requestId', isEqualTo: 'general')
+                    .orderBy('timestamp', descending: false)
+                    .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No general comments yet',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap the comment button to add the first comment',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[500],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Column(
+                children:
+                    snapshot.data!.docs.map((doc) {
+                      final comment = doc.data() as Map<String, dynamic>;
+                      final timestamp = comment['timestamp'] as Timestamp;
+                      final timeAgo = _getTimeAgo(timestamp.toDate());
+
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.1),
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: colorScheme.primary
+                                      .withValues(alpha: 0.1),
+                                  child: Text(
+                                    (comment['userName'] as String? ?? 'U')[0]
+                                        .toUpperCase(),
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        comment['userName'] ?? 'Unknown User',
+                                        style: theme.textTheme.titleSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      Text(
+                                        timeAgo,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: colorScheme.outline,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              comment['text'] ?? '',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+              );
+            },
           ),
         ],
       ),
@@ -1020,15 +1238,18 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
   }
 
   // Comments Section Widget
-  Widget _buildCommentsSection(BuildContext context, String requestId, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildCommentsSection(
+    BuildContext context,
+    String requestId,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1061,16 +1282,21 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
                 ),
                 const Spacer(),
                 StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('jobOrders')
-                      .doc(widget.jobOrderId)
-                      .collection('comments')
-                      .where('requestId', isEqualTo: requestId)
-                      .snapshots(),
+                  stream:
+                      FirebaseFirestore.instance
+                          .collection('jobOrders')
+                          .doc(widget.jobOrderId)
+                          .collection('comments')
+                          .where('requestId', isEqualTo: requestId)
+                          .snapshots(),
                   builder: (context, snapshot) {
-                    final commentCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                    final commentCount =
+                        snapshot.hasData ? snapshot.data!.docs.length : 0;
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
@@ -1088,16 +1314,17 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
               ],
             ),
           ),
-          
+
           // Comments List
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('jobOrders')
-                .doc(widget.jobOrderId)
-                .collection('comments')
-                .where('requestId', isEqualTo: requestId)
-                .orderBy('timestamp', descending: false)
-                .snapshots(),
+            stream:
+                FirebaseFirestore.instance
+                    .collection('jobOrders')
+                    .doc(widget.jobOrderId)
+                    .collection('comments')
+                    .where('requestId', isEqualTo: requestId)
+                    .orderBy('timestamp', descending: false)
+                    .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Padding(
@@ -1126,72 +1353,78 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
               }
 
               return Column(
-                children: snapshot.data!.docs.map((doc) {
-                  final comment = doc.data() as Map<String, dynamic>;
-                  final timestamp = comment['timestamp'] as Timestamp;
-                  final timeAgo = _getTimeAgo(timestamp.toDate());
-                  
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: colorScheme.outline.withValues(alpha: 0.1),
-                        ),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 12,
-                              backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
-                              child: Text(
-                                (comment['userName'] as String? ?? 'U')[0].toUpperCase(),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                children:
+                    snapshot.data!.docs.map((doc) {
+                      final comment = doc.data() as Map<String, dynamic>;
+                      final timestamp = comment['timestamp'] as Timestamp;
+                      final timeAgo = _getTimeAgo(timestamp.toDate());
+
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.1),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    comment['userName'] ?? 'Unknown User',
-                                    style: theme.textTheme.labelMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    timeAgo,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: colorScheme.primary
+                                      .withValues(alpha: 0.1),
+                                  child: Text(
+                                    (comment['userName'] as String? ?? 'U')[0]
+                                        .toUpperCase(),
                                     style: theme.textTheme.labelSmall?.copyWith(
-                                      color: colorScheme.outline,
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        comment['userName'] ?? 'Unknown User',
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      Text(
+                                        timeAgo,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: colorScheme.outline,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              comment['text'] ?? '',
+                              style: theme.textTheme.bodyMedium,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          comment['text'] ?? '',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
               );
             },
           ),
-          
+
           // Add Comment Input
           Container(
             padding: const EdgeInsets.all(12),
@@ -1224,9 +1457,7 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(
-                          color: colorScheme.primary,
-                        ),
+                        borderSide: BorderSide(color: colorScheme.primary),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1241,7 +1472,11 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: () => _addComment(requestId, _getCommentController(requestId).text),
+                  onTap:
+                      () => _addComment(
+                        requestId,
+                        _getCommentController(requestId).text,
+                      ),
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -1289,19 +1524,20 @@ class _JobOrderRequestHistoryScreenState extends State<JobOrderRequestHistoryScr
       }
 
       // Get user name from auth controller or user profile
-      String userName = user.displayName ?? user.email?.split('@')[0] ?? 'Anonymous';
+      String userName =
+          user.displayName ?? user.email?.split('@')[0] ?? 'Anonymous';
 
       await FirebaseFirestore.instance
           .collection('jobOrders')
           .doc(widget.jobOrderId)
           .collection('comments')
           .add({
-        'requestId': requestId,
-        'text': text.trim(),
-        'userId': user.uid,
-        'userName': userName,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+            'requestId': requestId,
+            'text': text.trim(),
+            'userId': user.uid,
+            'userName': userName,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
 
       // Clear the text field
       _getCommentController(requestId).clear();

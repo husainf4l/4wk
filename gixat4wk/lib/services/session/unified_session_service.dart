@@ -347,10 +347,11 @@ class UnifiedSessionService {
   Future<void> _finalizeSession(String sessionId) async {
     try {
       // Update any related job orders to completed status
-      final jobOrdersQuery = await FirebaseFirestore.instance
-          .collection('jobOrders')
-          .where('sessionId', isEqualTo: sessionId)
-          .get();
+      final jobOrdersQuery =
+          await FirebaseFirestore.instance
+              .collection('jobOrders')
+              .where('sessionId', isEqualTo: sessionId)
+              .get();
 
       for (final jobOrderDoc in jobOrdersQuery.docs) {
         await jobOrderDoc.reference.update({

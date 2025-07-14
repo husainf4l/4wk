@@ -407,7 +407,10 @@ class UnifiedSessionActivityController extends GetxController {
           qcChecks: requests.toList(),
           images: images.toList(),
           videos: videos.toList(),
-          qcData: reportData.isNotEmpty ? Map<String, dynamic>.from(reportData) : null,
+          qcData:
+              reportData.isNotEmpty
+                  ? Map<String, dynamic>.from(reportData)
+                  : null,
         );
     }
   }

@@ -1,7 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Represents the different stages of a session activity
-enum ActivityStage { clientNotes, inspection, testDrive, report, jobCard, qualityControl }
+enum ActivityStage {
+  clientNotes,
+  inspection,
+  testDrive,
+  report,
+  jobCard,
+  qualityControl,
+}
 
 /// Represents the status of an activity
 enum ActivityStatus { draft, completed, reviewed }
@@ -361,7 +368,8 @@ class UnifiedSessionActivity {
       images: images,
       videos: videos,
       requests: qcChecks,
-      reportData: qcData, // Store QC-specific data like delivery info, customer satisfaction, etc.
+      reportData:
+          qcData, // Store QC-specific data like delivery info, customer satisfaction, etc.
       createdBy: createdBy,
     );
   }
