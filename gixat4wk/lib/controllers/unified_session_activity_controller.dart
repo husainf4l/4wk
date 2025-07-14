@@ -293,7 +293,29 @@ class UnifiedSessionActivityController extends GetxController {
     if (_currentActivity != null) {
       success = await _unifiedService.updateActivity(activity.id, activity);
     } else {
-      final newActivityId = await _unifiedService.createActivity(activity);
+      String? newActivityId;
+      if (stage == ActivityStage.jobCard) {
+        // Use createJobCard method for job card activities to automatically create job orders
+        debugPrint(
+          '🔄 Creating job card activity with automatic job order creation...',
+        );
+        newActivityId = await _unifiedService.createJobCard(
+          sessionId: sessionId,
+          clientId: clientId,
+          carId: carId,
+          garageId: garageId,
+          notes: activity.notes,
+          jobCardItems: activity.requests,
+          images: activity.images,
+          requests: activity.requests,
+        );
+        if (newActivityId != null) {
+          debugPrint('✅ Job order also created automatically');
+        }
+      } else {
+        // Use regular createActivity for other stages
+        newActivityId = await _unifiedService.createActivity(activity);
+      }
       success = newActivityId != null;
     }
 

@@ -49,13 +49,45 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
         ),
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('jobOrders')
-            .doc(jobOrderId)
-            .snapshots(),
+        stream:
+            FirebaseFirestore.instance
+                .collection('jobOrders')
+                .doc(jobOrderId)
+                .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading job order',
+                    style: TextStyle(
+                      color: Colors.red[600],
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Get.back(),
+                    child: const Text('Go Back'),
+                  ),
+                ],
+              ),
+            );
           }
 
           if (!snapshot.hasData || !snapshot.data!.exists) {
@@ -63,18 +95,26 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
+                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
                     'Job order not found',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 18,
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This job order may have been deleted or moved',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Get.back(),
+                    child: const Text('Go Back'),
                   ),
                 ],
               ),
@@ -83,11 +123,62 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final orderData = data['order'] as Map<String, dynamic>? ?? {};
-          final requests = (orderData['requests'] as List<dynamic>?) ?? [];
-          final clientName = data['clientName'] ?? 'Unknown Client';
-          final createdAt = orderData['createdAt'] != null
-              ? DateTime.fromMillisecondsSinceEpoch(orderData['createdAt'])
-              : DateTime.now();
+
+          // Validate and extract requests with better error handling
+          List<Map<String, dynamic>> requests = [];
+          try {
+            if (orderData['requests'] != null) {
+              final requestsList =
+                  orderData['requests'] as List<dynamic>? ?? [];
+              requests =
+                  requestsList.where((item) => item != null && item is Map).map(
+                    (item) {
+                      final requestMap = item as Map<String, dynamic>;
+                      return {
+                        'id':
+                            requestMap['id']?.toString() ??
+                            DateTime.now().millisecondsSinceEpoch.toString(),
+                        'title':
+                            requestMap['title']?.toString() ??
+                            requestMap['name']?.toString() ??
+                            'Untitled Request',
+                        'isDone': requestMap['isDone'] == true,
+                        'notes':
+                            requestMap['notes']?.toString() ??
+                            requestMap['description']?.toString() ??
+                            '',
+                        'priority':
+                            requestMap['priority']?.toString() ?? 'medium',
+                      };
+                    },
+                  ).toList();
+            }
+          } catch (e) {
+            debugPrint('Error parsing requests: $e');
+            requests = [];
+          }
+
+          final clientName = data['clientName']?.toString() ?? 'Unknown Client';
+
+          // Handle createdAt with better validation
+          DateTime createdAt;
+          try {
+            if (orderData['createdAt'] != null) {
+              final createdAtValue = orderData['createdAt'];
+              if (createdAtValue is int) {
+                createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue);
+              } else if (createdAtValue is Timestamp) {
+                createdAt = createdAtValue.toDate();
+              } else {
+                createdAt = DateTime.now();
+              }
+            } else {
+              createdAt = DateTime.now();
+            }
+          } catch (e) {
+            debugPrint('Error parsing createdAt: $e');
+            createdAt = DateTime.now();
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -113,7 +204,9 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: colorScheme.primary.withValues(alpha: 0.15),
+                              color: colorScheme.primary.withValues(
+                                alpha: 0.15,
+                              ),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -129,9 +222,8 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
                               children: [
                                 Text(
                                   '$carMake $carModel',
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -147,7 +239,9 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Divider(color: colorScheme.outline.withValues(alpha: 0.2)),
+                      Divider(
+                        color: colorScheme.outline.withValues(alpha: 0.2),
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -303,59 +397,80 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
                                   width: 24,
                                   height: 24,
                                   decoration: BoxDecoration(
-                                    color: isDone
-                                        ? colorScheme.primary
-                                        : Colors.transparent,
+                                    color:
+                                        isDone
+                                            ? colorScheme.primary
+                                            : Colors.transparent,
                                     border: Border.all(
-                                      color: isDone
-                                          ? colorScheme.primary
-                                          : colorScheme.outline,
+                                      color:
+                                          isDone
+                                              ? colorScheme.primary
+                                              : colorScheme.outline,
                                       width: 2,
                                     ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: isDone
-                                      ? Icon(
-                                          Icons.check,
-                                          color: colorScheme.onPrimary,
-                                          size: 16,
-                                        )
-                                      : null,
+                                  child:
+                                      isDone
+                                          ? Icon(
+                                            Icons.check,
+                                            color: colorScheme.onPrimary,
+                                            size: 16,
+                                          )
+                                          : null,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     title,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: isDone
-                                          ? colorScheme.outline
-                                          : colorScheme.onSurface,
-                                      decoration: isDone
-                                          ? TextDecoration.lineThrough
-                                          : null,
-                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color:
+                                              isDone
+                                                  ? colorScheme.outline
+                                                  : colorScheme.onSurface,
+                                          decoration:
+                                              isDone
+                                                  ? TextDecoration.lineThrough
+                                                  : null,
+                                        ),
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isDone
-                                        ? Colors.green.withValues(alpha: 0.1)
-                                        : Colors.orange.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    isDone ? 'Completed' : 'Pending',
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: isDone
-                                          ? Colors.green[700]
-                                          : Colors.orange[700],
-                                      fontWeight: FontWeight.w600,
+                                const SizedBox(width: 12),
+                                // Add status toggle button
+                                GestureDetector(
+                                  onTap: () {
+                                    _updateRequestStatus(
+                                      requestId: request['id'] as String,
+                                      isDone: !isDone,
+                                    );
+                                  },
+                                  child: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isDone
+                                              ? colorScheme.primary
+                                              : Colors.transparent,
+                                      border: Border.all(
+                                        color:
+                                            isDone
+                                                ? colorScheme.primary
+                                                : colorScheme.outline,
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
+                                    child:
+                                        isDone
+                                            ? Icon(
+                                              Icons.check,
+                                              color: colorScheme.onPrimary,
+                                              size: 16,
+                                            )
+                                            : null,
                                   ),
                                 ),
                               ],
@@ -366,7 +481,8 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                  color: colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -387,6 +503,22 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
           );
         },
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Trigger a rebuild by showing a brief loading indicator
+          Get.snackbar(
+            'Refreshed',
+            'Job order data refreshed',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 1),
+            backgroundColor: colorScheme.primary.withValues(alpha: 0.8),
+            colorText: Colors.white,
+            icon: const Icon(Icons.refresh, color: Colors.white),
+          );
+        },
+        backgroundColor: colorScheme.primary,
+        child: const Icon(Icons.refresh, color: Colors.white),
+      ),
     );
   }
 
@@ -404,11 +536,7 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: colorScheme.outline,
-            ),
+            Icon(icon, size: 16, color: colorScheme.outline),
             const SizedBox(width: 4),
             Text(
               label,
@@ -428,5 +556,75 @@ class JobOrderRequestHistoryScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  // Helper method to update request status in Firestore
+  Future<void> _updateRequestStatus({
+    required String requestId,
+    required bool isDone,
+  }) async {
+    try {
+      // First fetch the current document to get all requests
+      final docSnapshot =
+          await FirebaseFirestore.instance
+              .collection('jobOrders')
+              .doc(jobOrderId)
+              .get();
+
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data() as Map<String, dynamic>;
+        final orderData = data['order'] as Map<String, dynamic>? ?? {};
+
+        if (orderData['requests'] != null) {
+          final List<dynamic> requests = List.from(orderData['requests']);
+
+          // Find and update the specific request
+          bool found = false;
+          for (int i = 0; i < requests.length; i++) {
+            if (requests[i] != null && requests[i]['id'] == requestId) {
+              requests[i] = Map<String, dynamic>.from(requests[i]);
+              requests[i]['isDone'] = isDone;
+              found = true;
+              break;
+            }
+          }
+
+          if (found) {
+            // Update the entire requests array in Firestore
+            await FirebaseFirestore.instance
+                .collection('jobOrders')
+                .doc(jobOrderId)
+                .update({
+                  'order.requests': requests,
+                  'updatedAt': DateTime.now().millisecondsSinceEpoch,
+                });
+
+            // Show success message
+            Get.snackbar(
+              'Updated',
+              'Task status updated successfully',
+              snackPosition: SnackPosition.BOTTOM,
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green.withValues(alpha: 0.8),
+              colorText: Colors.white,
+              icon: const Icon(Icons.check_circle, color: Colors.white),
+            );
+          } else {
+            debugPrint('Request with ID $requestId not found');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating request status: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to update task status: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+        backgroundColor: Colors.red.withValues(alpha: 0.8),
+        colorText: Colors.white,
+        icon: const Icon(Icons.error, color: Colors.white),
+      );
+    }
   }
 }

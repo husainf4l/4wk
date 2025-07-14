@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 import 'signup_page.dart';
+import 'privacy_security_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -354,6 +355,66 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                 ),
+
+                // Terms and Privacy
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        "By signing in, you agree to our",
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF86868B),
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Get.to(() => const PrivacySecurityScreen());
+                            },
+                            child: Text(
+                              "Terms of Service",
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            " and ",
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF86868B),
+                              fontSize: 12,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Get.to(() => const PrivacySecurityScreen());
+                            },
+                            child: Text(
+                              "Privacy Policy",
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
 
                 // Bottom section - minimal and clean
                 Padding(

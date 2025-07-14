@@ -25,10 +25,10 @@ class QualityControlScreen extends StatefulWidget {
 class _QualityControlScreenState extends State<QualityControlScreen> {
   final TextEditingController _qcNotesController = TextEditingController();
   final TextEditingController _qualityScoreController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _isSaving = false;
-  
+
   // QC Checklist items
   final Map<String, bool> _qcChecklist = {
     'Work Quality': false,
@@ -40,10 +40,10 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
     'Photos Verified': false,
     'Final Inspection': false,
   };
-  
+
   String _overallRating = 'Excellent';
   final List<String> _ratingOptions = ['Excellent', 'Good', 'Fair', 'Poor'];
-  
+
   Map<String, dynamic>? _existingQcData;
 
   @override
@@ -61,14 +61,15 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
 
   Future<void> _loadExistingQcData() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      final qcDoc = await FirebaseFirestore.instance
-          .collection('qc_reports')
-          .where('sessionId', isEqualTo: widget.sessionId)
-          .limit(1)
-          .get();
-      
+      final qcDoc =
+          await FirebaseFirestore.instance
+              .collection('qc_reports')
+              .where('sessionId', isEqualTo: widget.sessionId)
+              .limit(1)
+              .get();
+
       if (qcDoc.docs.isNotEmpty) {
         _existingQcData = qcDoc.docs.first.data();
         _populateFormWithExistingData();
@@ -83,23 +84,25 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
   void _populateFormWithExistingData() {
     if (_existingQcData != null) {
       _qcNotesController.text = _existingQcData!['notes'] ?? '';
-      _qualityScoreController.text = (_existingQcData!['qualityScore'] ?? '').toString();
+      _qualityScoreController.text =
+          (_existingQcData!['qualityScore'] ?? '').toString();
       _overallRating = _existingQcData!['overallRating'] ?? 'Excellent';
-      
-      final checklist = _existingQcData!['checklist'] as Map<String, dynamic>? ?? {};
+
+      final checklist =
+          _existingQcData!['checklist'] as Map<String, dynamic>? ?? {};
       checklist.forEach((key, value) {
         if (_qcChecklist.containsKey(key)) {
           _qcChecklist[key] = value ?? false;
         }
       });
-      
+
       setState(() {});
     }
   }
 
   Future<void> _saveQcReport() async {
     setState(() => _isSaving = true);
-    
+
     try {
       final qcData = {
         'sessionId': widget.sessionId,
@@ -116,21 +119,20 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
 
       if (_existingQcData != null) {
         // Update existing QC report
-        final qcDoc = await FirebaseFirestore.instance
-            .collection('qc_reports')
-            .where('sessionId', isEqualTo: widget.sessionId)
-            .limit(1)
-            .get();
-        
+        final qcDoc =
+            await FirebaseFirestore.instance
+                .collection('qc_reports')
+                .where('sessionId', isEqualTo: widget.sessionId)
+                .limit(1)
+                .get();
+
         if (qcDoc.docs.isNotEmpty) {
           await qcDoc.docs.first.reference.update(qcData);
         }
       } else {
         // Create new QC report
         qcData['createdAt'] = FieldValue.serverTimestamp();
-        await FirebaseFirestore.instance
-            .collection('qc_reports')
-            .add(qcData);
+        await FirebaseFirestore.instance.collection('qc_reports').add(qcData);
       }
 
       Get.snackbar(
@@ -160,7 +162,7 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accentColor = const Color(0xFFE82127);
-    
+
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
@@ -186,20 +188,26 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
             child: Center(
               child: FilledButton.icon(
                 onPressed: _isSaving ? null : _saveQcReport,
-                icon: _isSaving 
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.save, size: 18),
+                icon:
+                    _isSaving
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : const Icon(Icons.save, size: 18),
                 label: Text(_isSaving ? 'Saving...' : 'Save'),
                 style: FilledButton.styleFrom(
                   backgroundColor: accentColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -337,12 +345,13 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
                           vertical: 16,
                         ),
                       ),
-                      items: _ratingOptions.map((String rating) {
-                        return DropdownMenuItem<String>(
-                          value: rating,
-                          child: Text(rating),
-                        );
-                      }).toList(),
+                      items:
+                          _ratingOptions.map((String rating) {
+                            return DropdownMenuItem<String>(
+                              value: rating,
+                              child: Text(rating),
+                            );
+                          }).toList(),
                       onChanged: (String? newValue) {
                         setState(() {
                           _overallRating = newValue ?? 'Excellent';
@@ -399,7 +408,8 @@ class _QualityControlScreenState extends State<QualityControlScreen> {
                       controller: _qcNotesController,
                       decoration: InputDecoration(
                         labelText: 'Quality Control Notes',
-                        hintText: 'Enter any observations, recommendations, or quality concerns...',
+                        hintText:
+                            'Enter any observations, recommendations, or quality concerns...',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:gixat4wk/screens/others/main_navigation_screen.dart';
 import 'unified_session_activity_screen.dart';
 import 'report_screen.dart';
+import 'quality_control_screen.dart';
 import '../../models/session.dart';
 import '../../utils/session_utils.dart';
 import '../../models/unified_session_activity.dart';

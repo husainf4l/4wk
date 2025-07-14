@@ -270,6 +270,132 @@ class UnifiedSessionService {
     return await createActivity(activity);
   }
 
+  /// Create job card activity and corresponding job order
+  Future<String?> createJobCard({
+    required String sessionId,
+    required String clientId,
+    required String carId,
+    required String garageId,
+    required String notes,
+    required List<Map<String, dynamic>> jobCardItems,
+    List<String> images = const [],
+    List<Map<String, dynamic>> requests = const [],
+  }) async {
+    final activity = UnifiedSessionActivity.forJobCard(
+      sessionId: sessionId,
+      clientId: clientId,
+      carId: carId,
+      garageId: garageId,
+      notes: notes,
+      jobCardItems: jobCardItems,
+      images: images,
+    );
+
+    // Create the session activity first
+    final activityId = await createActivity(activity);
+
+    if (activityId != null) {
+      // Now create the job order
+      await _createJobOrderFromJobCard(
+        sessionId: sessionId,
+        clientId: clientId,
+        carId: carId,
+        garageId: garageId,
+        jobCardItems: jobCardItems,
+        notes: notes,
+      );
+    }
+
+    return activityId;
+  }
+
+  /// Create job order from job card data
+  Future<void> _createJobOrderFromJobCard({
+    required String sessionId,
+    required String clientId,
+    required String carId,
+    required String garageId,
+    required List<Map<String, dynamic>> jobCardItems,
+    required String notes,
+  }) async {
+    try {
+      // Get session data to extract client and car information
+      final sessionDoc = await _sessionsCollection.doc(sessionId).get();
+      if (!sessionDoc.exists) {
+        debugPrint('Session not found for job order creation');
+        return;
+      }
+
+      // Get client data
+      final clientDoc =
+          await FirebaseFirestore.instance
+              .collection('clients')
+              .doc(clientId)
+              .get();
+
+      final clientData =
+          clientDoc.exists ? clientDoc.data() as Map<String, dynamic> : {};
+
+      // Get car data
+      final carDoc =
+          await FirebaseFirestore.instance.collection('cars').doc(carId).get();
+
+      final carData =
+          carDoc.exists ? carDoc.data() as Map<String, dynamic> : {};
+
+      // Create job order document
+      final jobOrderData = {
+        'sessionId': sessionId,
+        'clientId': clientId,
+        'clientName': clientData['name'] ?? 'Unknown Client',
+        'carData': {
+          'id': carId,
+          'make': carData['make'] ?? 'Unknown',
+          'model': carData['model'] ?? 'Unknown',
+          'year': carData['year'] ?? '',
+          'plate': carData['plateNumber'] ?? 'Unknown',
+          'vin': carData['vin'] ?? '',
+          'mileage': carData['mileage'] ?? '',
+        },
+        'order': {
+          'id': 'job-${DateTime.now().millisecondsSinceEpoch}',
+          'requests':
+              jobCardItems
+                  .map(
+                    (item) => {
+                      'id':
+                          item['id'] ??
+                          DateTime.now().millisecondsSinceEpoch.toString(),
+                      'title':
+                          item['title'] ?? item['name'] ?? 'Untitled Request',
+                      'isDone': false,
+                      'notes': item['notes'] ?? item['description'] ?? '',
+                      'priority': item['priority'] ?? 'medium',
+                    },
+                  )
+                  .toList(),
+          'status': 'open',
+          'notes': notes,
+          'createdAt': DateTime.now().millisecondsSinceEpoch,
+        },
+        'garageId': garageId,
+        'createdBy': _currentUserId,
+        'createdAt': DateTime.now().millisecondsSinceEpoch,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      };
+
+      // Save to jobOrders collection
+      await FirebaseFirestore.instance
+          .collection('jobOrders')
+          .add(jobOrderData);
+
+      debugPrint('Job order created successfully for session: $sessionId');
+    } catch (e) {
+      debugPrint('Error creating job order: $e');
+      _handleFirestoreError(e, 'creating job order from job card');
+    }
+  }
+
   // ============================================================================
   // Session Status Management
   // ============================================================================

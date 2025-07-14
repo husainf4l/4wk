@@ -52,7 +52,10 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(16),
@@ -112,11 +115,50 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                 stream:
                     FirebaseFirestore.instance
                         .collection('jobOrders')
-                        .orderBy('order.createdAt', descending: true)
-                        .snapshots(),
+                        .snapshots(), // Removed orderBy to avoid index issues
                 builder: (context, snapshot) {
+                  // Debug logging
+                  print('JobOrders Stream State: ${snapshot.connectionState}');
+                  print('JobOrders Has Data: ${snapshot.hasData}');
+                  print(
+                    'JobOrders Docs Count: ${snapshot.data?.docs.length ?? 0}',
+                  );
+                  if (snapshot.hasError) {
+                    print('JobOrders Stream Error: ${snapshot.error}');
+                  }
+
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // Check for errors
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Colors.red[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading job orders',
+                            style: TextStyle(
+                              color: Colors.red[600],
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${snapshot.error}',
+                            style: TextStyle(color: Colors.grey[500]),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
                   }
 
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -142,6 +184,16 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                             'Create a new job order to see it here',
                             style: TextStyle(color: Colors.grey[500]),
                           ),
+                          const SizedBox(height: 16),
+                          // Debug info
+                          if (snapshot.hasData)
+                            Text(
+                              'Collection exists but is empty (${snapshot.data!.docs.length} documents)',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                            ),
                         ],
                       ),
                     );
@@ -149,54 +201,130 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
 
                   final jobOrders =
                       snapshot.data!.docs.map((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        // Extract car data from the nested structure
-                        final carData =
-                            data['carData'] as Map<String, dynamic>? ?? {};
-                        final carMake = carData['make'] ?? 'Unknown';
-                        final carModel = carData['model'] ?? 'Unknown';
-                        final carPlate = carData['plate'] ?? 'Unknown';
+                          try {
+                            final data = doc.data() as Map<String, dynamic>;
 
-                        // Extract order requests
-                        List<Map<String, dynamic>> requests = [];
-                        if (data['order'] != null &&
-                            data['order']['requests'] != null) {
-                          final requestsList =
-                              data['order']['requests'] as List<dynamic>;
-                          requests =
-                              requestsList
-                                  .map(
-                                    (item) => {
-                                      'id':
-                                          item['id'] ??
-                                          DateTime.now().millisecondsSinceEpoch
-                                              .toString(),
-                                      'title':
-                                          item['title'] ?? 'Untitled Request',
-                                      'isDone': item['isDone'] ?? false,
-                                      'notes': item['notes'] ?? '',
-                                    },
-                                  )
-                                  .toList();
-                        }
+                            // Extract car data from the nested structure with validation
+                            final carData =
+                                data['carData'] as Map<String, dynamic>? ?? {};
+                            final carMake =
+                                carData['make']?.toString() ?? 'Unknown';
+                            final carModel =
+                                carData['model']?.toString() ?? 'Unknown';
+                            final carPlate =
+                                carData['plate']?.toString() ??
+                                carData['plateNumber']?.toString() ??
+                                'Unknown';
 
-                        return {
-                          'id': doc.id,
-                          'orderNumber': doc.id.substring(0, 6).toUpperCase(),
-                          'clientName': data['clientName'] ?? 'Unknown Client',
-                          'status': data['order']?['status'] ?? 'Pending',
-                          'createdAt':
-                              data['order']?['createdAt'] != null
-                                  ? Timestamp.fromMillisecondsSinceEpoch(
-                                    data['order']['createdAt'],
-                                  )
-                                  : Timestamp.now(),
-                          'carMake': carMake,
-                          'carModel': carModel,
-                          'carPlate': carPlate,
-                          'requests': requests,
-                        };
-                      }).toList();
+                            // Extract order data with validation
+                            final orderData =
+                                data['order'] as Map<String, dynamic>? ?? {};
+
+                            // Extract order requests with proper validation
+                            List<Map<String, dynamic>> requests = [];
+                            if (orderData['requests'] != null) {
+                              final requestsList =
+                                  orderData['requests'] as List<dynamic>? ?? [];
+                              requests =
+                                  requestsList
+                                      .where(
+                                        (item) => item != null && item is Map,
+                                      )
+                                      .map((item) {
+                                        final requestMap =
+                                            item as Map<String, dynamic>;
+                                        return {
+                                          'id':
+                                              requestMap['id']?.toString() ??
+                                              DateTime.now()
+                                                  .millisecondsSinceEpoch
+                                                  .toString(),
+                                          'title':
+                                              requestMap['title']?.toString() ??
+                                              requestMap['name']?.toString() ??
+                                              'Untitled Request',
+                                          'isDone':
+                                              requestMap['isDone'] == true,
+                                          'notes':
+                                              requestMap['notes']?.toString() ??
+                                              requestMap['description']
+                                                  ?.toString() ??
+                                              '',
+                                          'priority':
+                                              requestMap['priority']
+                                                  ?.toString() ??
+                                              'medium',
+                                        };
+                                      })
+                                      .toList();
+                            }
+
+                            // Create timestamp with validation
+                            Timestamp createdAt;
+                            if (orderData['createdAt'] != null) {
+                              final createdAtValue = orderData['createdAt'];
+                              if (createdAtValue is int) {
+                                createdAt =
+                                    Timestamp.fromMillisecondsSinceEpoch(
+                                      createdAtValue,
+                                    );
+                              } else if (createdAtValue is Timestamp) {
+                                createdAt = createdAtValue;
+                              } else {
+                                createdAt = Timestamp.now();
+                              }
+                            } else {
+                              createdAt = Timestamp.now();
+                            }
+
+                            return {
+                              'id': doc.id,
+                              'orderNumber':
+                                  doc.id.substring(0, 6).toUpperCase(),
+                              'clientName':
+                                  data['clientName']?.toString() ??
+                                  'Unknown Client',
+                              'status':
+                                  orderData['status']?.toString() ?? 'open',
+                              'createdAt': createdAt,
+                              'carMake': carMake,
+                              'carModel': carModel,
+                              'carPlate': carPlate,
+                              'requests': requests,
+                              'totalRequests': requests.length,
+                              'completedRequests':
+                                  requests
+                                      .where((r) => r['isDone'] == true)
+                                      .length,
+                            };
+                          } catch (e) {
+                            // Log error and return a safe fallback
+                            debugPrint(
+                              'Error processing job order ${doc.id}: $e',
+                            );
+                            return {
+                              'id': doc.id,
+                              'orderNumber':
+                                  doc.id.substring(0, 6).toUpperCase(),
+                              'clientName': 'Unknown Client',
+                              'status': 'error',
+                              'createdAt': Timestamp.now(),
+                              'carMake': 'Unknown',
+                              'carModel': 'Unknown',
+                              'carPlate': 'Unknown',
+                              'requests': <Map<String, dynamic>>[],
+                              'totalRequests': 0,
+                              'completedRequests': 0,
+                              'hasError': true,
+                            };
+                          }
+                        }).toList()
+                        ..sort((a, b) {
+                          // Sort by createdAt timestamp in descending order
+                          final aTime = a['createdAt'] as Timestamp;
+                          final bTime = b['createdAt'] as Timestamp;
+                          return bTime.compareTo(aTime);
+                        });
 
                   return Obx(() {
                     final query = _searchQuery.value;
@@ -246,7 +374,7 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                         final jobOrder = filteredJobOrders[index];
                         final List<Map<String, dynamic>> requests =
                             List<Map<String, dynamic>>.from(
-                              jobOrder['requests'],
+                              jobOrder['requests'] as List? ?? [],
                             );
                         final theme = Theme.of(context);
                         final colorScheme = theme.colorScheme;
@@ -260,21 +388,59 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: colorScheme.outline.withValues(alpha: 0.18),
+                              color:
+                                  jobOrder['hasError'] == true
+                                      ? Colors.red.withValues(alpha: 0.3)
+                                      : colorScheme.outline.withValues(
+                                        alpha: 0.18,
+                                      ),
                               width: 1.2,
                             ),
                           ),
                           child: Column(
                             children: [
+                              // Error indicator if there's an error
+                              if (jobOrder['hasError'] == true)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(14),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.warning_amber_outlined,
+                                        color: Colors.red[600],
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Error loading job order data',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: Colors.red[600],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               // Car Info Section with Chat History Icon
                               InkWell(
                                 onTap: () {
                                   Get.to(
                                     () => JobOrderRequestHistoryScreen(
-                                      jobOrderId: jobOrder['id'],
-                                      carMake: jobOrder['carMake'],
-                                      carModel: jobOrder['carModel'],
-                                      carPlate: jobOrder['carPlate'],
+                                      jobOrderId: jobOrder['id'] as String,
+                                      carMake: jobOrder['carMake'] as String,
+                                      carModel: jobOrder['carModel'] as String,
+                                      carPlate: jobOrder['carPlate'] as String,
                                     ),
                                   );
                                 },
@@ -294,8 +460,9 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                                         width: 38,
                                         height: 38,
                                         decoration: BoxDecoration(
-                                          color: colorScheme.primary
-                                              .withValues(alpha: 0.12),
+                                          color: colorScheme.primary.withValues(
+                                            alpha: 0.12,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
@@ -318,44 +485,136 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                                                   ),
                                             ),
                                             const SizedBox(height: 2),
-                                            Text(
-                                              jobOrder['carPlate'],
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                    color: colorScheme.primary,
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  jobOrder['carPlate']
+                                                      as String,
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        color:
+                                                            colorScheme.primary,
+                                                      ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: _getStatusColor(
+                                                      jobOrder['status']
+                                                          as String,
+                                                    ).withValues(alpha: 0.1),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
                                                   ),
+                                                  child: Text(
+                                                    _getStatusDisplayName(
+                                                      jobOrder['status']
+                                                          as String,
+                                                    ),
+                                                    style: theme
+                                                        .textTheme
+                                                        .labelSmall
+                                                        ?.copyWith(
+                                                          color: _getStatusColor(
+                                                            jobOrder['status']
+                                                                as String,
+                                                          ),
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
                                       ),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: colorScheme.primary
-                                              .withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        padding: const EdgeInsets.all(8),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.chat_outlined,
-                                              color: colorScheme.primary,
-                                              size: 16,
+                                      Column(
+                                        children: [
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: colorScheme.primary
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'History',
-                                              style: theme.textTheme.labelSmall
-                                                  ?.copyWith(
-                                                    color: colorScheme.primary,
-                                                    fontWeight: FontWeight.w500,
+                                            padding: const EdgeInsets.all(8),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.chat_outlined,
+                                                  color: colorScheme.primary,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'History',
+                                                  style: theme
+                                                      .textTheme
+                                                      .labelSmall
+                                                      ?.copyWith(
+                                                        color:
+                                                            colorScheme.primary,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (requests.isNotEmpty) ...[
+                                            const SizedBox(height: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
                                                   ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    jobOrder['completedRequests'] ==
+                                                            jobOrder['totalRequests']
+                                                        ? Colors.green
+                                                            .withValues(
+                                                              alpha: 0.1,
+                                                            )
+                                                        : Colors.orange
+                                                            .withValues(
+                                                              alpha: 0.1,
+                                                            ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                '${jobOrder['completedRequests']}/${jobOrder['totalRequests']}',
+                                                style: theme
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(
+                                                      color:
+                                                          jobOrder['completedRequests'] ==
+                                                                  jobOrder['totalRequests']
+                                                              ? Colors
+                                                                  .green[700]
+                                                              : Colors
+                                                                  .orange[700],
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                              ),
                                             ),
                                           ],
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -364,8 +623,73 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
 
                               Divider(
                                 height: 1,
-                                color: colorScheme.outline.withValues(alpha: 0.10),
+                                color: colorScheme.outline.withValues(
+                                  alpha: 0.10,
+                                ),
                               ),
+
+                              // Progress indicator section
+                              if (requests.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Progress',
+                                            style: theme.textTheme.labelMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      colorScheme
+                                                          .onSurfaceVariant,
+                                                ),
+                                          ),
+                                          Text(
+                                            '${((jobOrder['completedRequests'] as int) / (jobOrder['totalRequests'] as int) * 100).round()}%',
+                                            style: theme.textTheme.labelMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: colorScheme.primary,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      LinearProgressIndicator(
+                                        value:
+                                            (jobOrder['completedRequests']
+                                                as int) /
+                                            (jobOrder['totalRequests'] as int),
+                                        backgroundColor: colorScheme.outline
+                                            .withValues(alpha: 0.2),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              jobOrder['completedRequests'] ==
+                                                      jobOrder['totalRequests']
+                                                  ? Colors.green
+                                                  : colorScheme.primary,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              if (requests.isNotEmpty)
+                                Divider(
+                                  height: 1,
+                                  color: colorScheme.outline.withValues(
+                                    alpha: 0.10,
+                                  ),
+                                ),
 
                               // Tasks Section
                               Padding(
@@ -418,8 +742,11 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                                                         !isChecked.value;
                                                     _updateRequestStatus(
                                                       jobOrderId:
-                                                          jobOrder['id'],
-                                                      requestId: request['id'],
+                                                          jobOrder['id']
+                                                              as String,
+                                                      requestId:
+                                                          request['id']
+                                                              as String,
                                                       isDone: isChecked.value,
                                                     );
                                                   },
@@ -494,7 +821,6 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
     );
   }
 
-
   // Helper method to update request status in Firestore
   Future<void> _updateRequestStatus({
     required String jobOrderId,
@@ -548,6 +874,52 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
         backgroundColor: Colors.red.withValues(alpha: 0.7),
         colorText: Colors.white,
       );
+    }
+  }
+
+  // Helper methods for status handling
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'open':
+      case 'pending':
+        return Colors.orange;
+      case 'in_progress':
+      case 'working':
+        return Colors.blue;
+      case 'completed':
+      case 'done':
+        return Colors.green;
+      case 'cancelled':
+      case 'canceled':
+        return Colors.red;
+      case 'error':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getStatusDisplayName(String status) {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return 'Open';
+      case 'pending':
+        return 'Pending';
+      case 'in_progress':
+        return 'In Progress';
+      case 'working':
+        return 'Working';
+      case 'completed':
+        return 'Completed';
+      case 'done':
+        return 'Done';
+      case 'cancelled':
+      case 'canceled':
+        return 'Cancelled';
+      case 'error':
+        return 'Error';
+      default:
+        return status.toUpperCase();
     }
   }
 }

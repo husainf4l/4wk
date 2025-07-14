@@ -381,10 +381,34 @@ class _UnifiedSessionActivityScreenState
       } else {
         debugPrint('🔄 Creating new activity...');
         final activity = _createActivityFromForm('');
-        final activityId = await _unifiedService.createActivity(activity);
+
+        String? activityId;
+        if (widget.stage == ActivityStage.jobCard) {
+          // Use createJobCard method for job card activities to automatically create job orders
+          debugPrint(
+            '🔄 Creating job card activity with automatic job order creation...',
+          );
+          activityId = await _unifiedService.createJobCard(
+            sessionId: widget.sessionId,
+            clientId: widget.clientId,
+            carId: widget.carId,
+            garageId: widget.garageId,
+            notes: activity.notes,
+            jobCardItems: activity.requests,
+            images: activity.images,
+            requests: activity.requests,
+          );
+        } else {
+          // Use regular createActivity for other stages
+          activityId = await _unifiedService.createActivity(activity);
+        }
+
         success = activityId != null;
         if (success) {
           debugPrint('✅ Activity created successfully with ID: $activityId');
+          if (widget.stage == ActivityStage.jobCard) {
+            debugPrint('✅ Job order also created automatically');
+          }
         } else {
           debugPrint('❌ Failed to create activity');
         }
@@ -604,7 +628,9 @@ class _UnifiedSessionActivityScreenState
               style: SegmentedButton.styleFrom(
                 foregroundColor: Colors.grey[600],
                 selectedForegroundColor: theme.primaryColor,
-                selectedBackgroundColor: theme.primaryColor.withValues(alpha: 0.1),
+                selectedBackgroundColor: theme.primaryColor.withValues(
+                  alpha: 0.1,
+                ),
               ),
             ),
           ),

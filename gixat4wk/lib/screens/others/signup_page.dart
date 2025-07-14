@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
+import 'privacy_security_screen.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -19,6 +20,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _acceptTerms = false;
   String? _nameError;
   String? _emailError;
   String? _passwordError;
@@ -365,16 +367,86 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
+
+                      // Terms and Privacy Checkbox
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Checkbox(
+                            value: _acceptTerms,
+                            onChanged: (value) {
+                              setState(() {
+                                _acceptTerms = value ?? false;
+                              });
+                            },
+                            activeColor: theme.colorScheme.primary,
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: const Color(0xFF86868B),
+                                    fontSize: 12,
+                                    height: 1.4,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: "I agree to the "),
+                                    WidgetSpan(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Get.to(() => const PrivacySecurityScreen());
+                                        },
+                                        child: Text(
+                                          "Terms of Service",
+                                          style: TextStyle(
+                                            color: theme.colorScheme.primary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const TextSpan(text: " and "),
+                                    WidgetSpan(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          Get.to(() => const PrivacySecurityScreen());
+                                        },
+                                        child: Text(
+                                          "Privacy Policy",
+                                          style: TextStyle(
+                                            color: theme.colorScheme.primary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
 
                       // Apple-style sign up button
                       SizedBox(
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () => _signUp(),
+                          onPressed: _acceptTerms ? () => _signUp() : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.primary,
+                            backgroundColor: _acceptTerms 
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outline.withValues(alpha: 0.3),
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -543,6 +615,17 @@ class _SignUpPageState extends State<SignUpPage> {
 
   void _signUp() async {
     if (_formKey.currentState?.validate() != true) {
+      return;
+    }
+
+    if (!_acceptTerms) {
+      Get.snackbar(
+        "Terms Required",
+        "Please accept the Terms of Service and Privacy Policy to continue",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red,
+      );
       return;
     }
 

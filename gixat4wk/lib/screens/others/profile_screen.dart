@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../controllers/auth_controller.dart';
 import '../../services/database_service.dart';
 import '../../widgets/account_deletion_dialog.dart';
+import 'privacy_security_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -135,11 +136,7 @@ class ProfileScreen extends StatelessWidget {
               'Privacy & Security',
               Icons.security_outlined,
               () {
-                Get.snackbar(
-                  'Privacy',
-                  'Privacy settings feature coming soon',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
+                Get.to(() => const PrivacySecurityScreen());
               },
             ),
             const SizedBox(height: 12),
