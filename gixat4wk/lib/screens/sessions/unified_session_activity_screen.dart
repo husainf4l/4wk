@@ -212,6 +212,8 @@ class _UnifiedSessionActivityScreenState
         return 'Report';
       case ActivityStage.jobCard:
         return 'Job Card';
+      case ActivityStage.qualityControl:
+        return 'Quality Control';
     }
   }
 
@@ -227,6 +229,8 @@ class _UnifiedSessionActivityScreenState
         return Icons.assignment;
       case ActivityStage.jobCard:
         return Icons.assignment_outlined;
+      case ActivityStage.qualityControl:
+        return Icons.verified_user;
     }
   }
 
@@ -526,6 +530,19 @@ class _UnifiedSessionActivityScreenState
           images: _images,
           videos: _videos,
         );
+
+      case ActivityStage.qualityControl:
+        return UnifiedSessionActivity.forQualityControl(
+          sessionId: widget.sessionId,
+          clientId: widget.clientId,
+          carId: widget.carId,
+          garageId: widget.garageId,
+          notes: _notesController.text.trim(),
+          qcChecks: _requests, // Use _requests as qcChecks
+          images: _images,
+          videos: _videos,
+          qcData: _reportData, // Use _reportData as qcData
+        );
     }
   }
 
@@ -759,6 +776,20 @@ class _UnifiedSessionActivityScreenState
         ];
       case ActivityStage.jobCard:
         return [_buildJobCardSection()];
+      case ActivityStage.qualityControl:
+        return [
+          FindingsSection(
+            findings: _findings,
+            onAdd: _addFinding,
+            onRemove: _removeFinding,
+            onEdit: _editFinding,
+          ),
+          ReportDataSection(
+            reportData: _reportData,
+            onTitleChanged: (value) => _reportData['title'] = value,
+            onSummaryChanged: (value) => _reportData['summary'] = value,
+          ),
+        ];
     }
   }
 
@@ -1375,6 +1406,8 @@ class _UnifiedSessionActivityScreenState
         return '${AWSConfig.carImagesFolder}/reports';
       case ActivityStage.jobCard:
         return '${AWSConfig.carImagesFolder}/job-cards';
+      case ActivityStage.qualityControl:
+        return '${AWSConfig.carImagesFolder}/quality-control';
     }
   }
 

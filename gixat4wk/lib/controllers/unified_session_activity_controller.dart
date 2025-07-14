@@ -81,6 +81,8 @@ class UnifiedSessionActivityController extends GetxController {
         return 'Report';
       case ActivityStage.jobCard:
         return 'Job Card';
+      case ActivityStage.qualityControl:
+        return 'Quality Control';
     }
   }
 
@@ -96,6 +98,8 @@ class UnifiedSessionActivityController extends GetxController {
         return Icons.assignment;
       case ActivityStage.jobCard:
         return Icons.assignment_turned_in_outlined;
+      case ActivityStage.qualityControl:
+        return Icons.verified_user;
     }
   }
 
@@ -393,6 +397,18 @@ class UnifiedSessionActivityController extends GetxController {
           images: images.toList(),
           videos: videos.toList(),
         );
+      case ActivityStage.qualityControl:
+        return UnifiedSessionActivity.forQualityControl(
+          sessionId: sessionId,
+          clientId: clientId,
+          carId: carId,
+          garageId: garageId,
+          notes: notesController.text.trim(),
+          qcChecks: requests.toList(),
+          images: images.toList(),
+          videos: videos.toList(),
+          qcData: reportData.isNotEmpty ? Map<String, dynamic>.from(reportData) : null,
+        );
     }
   }
 
@@ -631,6 +647,8 @@ class UnifiedSessionActivityController extends GetxController {
         return '${AWSConfig.carImagesFolder}/reports';
       case ActivityStage.jobCard:
         return '${AWSConfig.carImagesFolder}/job-cards';
+      case ActivityStage.qualityControl:
+        return '${AWSConfig.carImagesFolder}/quality-control';
     }
   }
 
@@ -663,6 +681,15 @@ class UnifiedSessionActivityController extends GetxController {
       'request': requestText,
       'argancy': selectedUrgency.value,
       'timestamp': DateTime.now().toIso8601String(),
+      // Add source information for job order context
+      'source': 'session',
+      'sourceStage': stage.toString().split('.').last,
+      // Job order specific fields (initialized for future use)
+      'jobOrderStatus': 'pending',
+      'jobOrderNotes': '',
+      'assignedTo': '',
+      'estimatedHours': '',
+      'price': '0',
     });
 
     requestController.clear();

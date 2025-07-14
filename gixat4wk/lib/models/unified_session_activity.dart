@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Represents the different stages of a session activity
-enum ActivityStage { clientNotes, inspection, testDrive, report, jobCard }
+enum ActivityStage { clientNotes, inspection, testDrive, report, jobCard, qualityControl }
 
 /// Represents the status of an activity
 enum ActivityStatus { draft, completed, reviewed }
@@ -20,6 +20,8 @@ extension ActivityStageExtension on ActivityStage {
         return 'Report';
       case ActivityStage.jobCard:
         return 'Job Card';
+      case ActivityStage.qualityControl:
+        return 'Quality Control';
     }
   }
 
@@ -331,6 +333,35 @@ class UnifiedSessionActivity {
       images: images,
       videos: videos,
       requests: jobCardItems,
+      createdBy: createdBy,
+    );
+  }
+
+  /// Creates a specialized instance for quality control activities
+  static UnifiedSessionActivity forQualityControl({
+    required String sessionId,
+    required String clientId,
+    required String carId,
+    required String garageId,
+    required String notes,
+    required List<Map<String, dynamic>> qcChecks,
+    List<String> images = const [],
+    List<String> videos = const [],
+    Map<String, dynamic>? qcData,
+    String? createdBy,
+  }) {
+    return UnifiedSessionActivity(
+      id: '', // Will be set by Firestore
+      sessionId: sessionId,
+      clientId: clientId,
+      carId: carId,
+      garageId: garageId,
+      stage: ActivityStage.qualityControl,
+      notes: notes,
+      images: images,
+      videos: videos,
+      requests: qcChecks,
+      reportData: qcData, // Store QC-specific data like delivery info, customer satisfaction, etc.
       createdBy: createdBy,
     );
   }

@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:gixat4wk/screens/others/main_navigation_screen.dart';
 import 'unified_session_activity_screen.dart';
 import 'report_screen.dart';
-import 'quality_control_screen.dart';
+
 import '../../models/session.dart';
 import '../../utils/session_utils.dart';
 import '../../models/unified_session_activity.dart';
@@ -48,6 +48,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         'testDrive': false,
         'report': false,
         'jobCard': false,
+        'qualityControl': false,
       };
 
       for (var doc in snapshot.docs) {
@@ -362,18 +363,19 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _SessionBox(
-                            icon: Icons.high_quality,
-                            title: 'QC',
+                            icon: Icons.verified_user,
+                            title: 'Quality Control',
                             color: accentColor,
-                            hasData: stageHasData['qc'] ?? false,
+                            hasData: stageHasData['qualityControl'] ?? false,
                             onTap: () async {
-                              // Navigate to Quality Control screen
+                              // Navigate to unified session activity screen for quality control
                               final result = await Get.to(
-                                () => QualityControlScreen(
+                                () => UnifiedSessionActivityScreen(
                                   sessionId: widget.session.id,
                                   clientId: widget.session.clientId,
                                   carId: widget.session.car['id'] ?? '',
                                   garageId: widget.session.garageId,
+                                  stage: ActivityStage.qualityControl,
                                   sessionData: {
                                     'car': widget.session.car,
                                     'client': widget.session.client,
@@ -381,7 +383,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                                   },
                                 ),
                               );
-                              // Refresh stage data when returning from QC screen
+                              // Refresh stage data when returning from activity screen
                               if (result == true) {
                                 _checkStageData();
                               }

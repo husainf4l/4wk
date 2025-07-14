@@ -309,6 +309,70 @@ class UnifiedSessionService {
     return activityId;
   }
 
+  /// Create quality control activity (final stage)
+  Future<String?> createQualityControl({
+    required String sessionId,
+    required String clientId,
+    required String carId,
+    required String garageId,
+    required String notes,
+    required List<Map<String, dynamic>> qcChecks,
+    List<String> images = const [],
+    Map<String, dynamic>? qcData,
+  }) async {
+    final activity = UnifiedSessionActivity.forQualityControl(
+      sessionId: sessionId,
+      clientId: clientId,
+      carId: carId,
+      garageId: garageId,
+      notes: notes,
+      qcChecks: qcChecks,
+      images: images,
+      qcData: qcData,
+    );
+
+    // Create the session activity
+    final activityId = await createActivity(activity);
+
+    if (activityId != null) {
+      // Since this is the final stage, we might want to add additional completion logic here
+      // For example: update job order status to completed, send notifications, etc.
+      await _finalizeSession(sessionId);
+    }
+
+    return activityId;
+  }
+
+  /// Finalize session when QC is completed
+  Future<void> _finalizeSession(String sessionId) async {
+    try {
+      // Update any related job orders to completed status
+      final jobOrdersQuery = await FirebaseFirestore.instance
+          .collection('jobOrders')
+          .where('sessionId', isEqualTo: sessionId)
+          .get();
+
+      for (final jobOrderDoc in jobOrdersQuery.docs) {
+        await jobOrderDoc.reference.update({
+          'order.status': 'completed',
+          'completedAt': DateTime.now().millisecondsSinceEpoch,
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        });
+      }
+
+      // Add completion timestamp to session
+      await _sessionsCollection.doc(sessionId).update({
+        'completedAt': FieldValue.serverTimestamp(),
+        'isCompleted': true,
+      });
+
+      debugPrint('Session $sessionId finalized successfully');
+    } catch (e) {
+      debugPrint('Error finalizing session $sessionId: $e');
+      _handleFirestoreError(e, 'finalizing session');
+    }
+  }
+
   /// Create job order from job card data
   Future<void> _createJobOrderFromJobCard({
     required String sessionId,
@@ -363,14 +427,31 @@ class UnifiedSessionService {
               jobCardItems
                   .map(
                     (item) => {
+                      // Universal request fields (consistent with session activities)
                       'id':
                           item['id'] ??
                           DateTime.now().millisecondsSinceEpoch.toString(),
-                      'title':
-                          item['title'] ?? item['name'] ?? 'Untitled Request',
+                      'request':
+                          item['request'] ??
+                          item['title'] ??
+                          item['name'] ??
+                          'Untitled Request',
+                      'argancy':
+                          item['argancy'] ?? item['priority'] ?? 'medium',
+                      // Job order specific fields
+                      'jobOrderStatus': 'pending',
+                      'jobOrderNotes':
+                          item['notes'] ?? item['description'] ?? '',
+                      'assignedTo': item['assignedTo'] ?? '',
+                      'estimatedHours': item['estimatedHours'] ?? '',
+                      'price': item['price'] ?? '0',
+                      // Backward compatibility
                       'isDone': false,
-                      'notes': item['notes'] ?? item['description'] ?? '',
-                      'priority': item['priority'] ?? 'medium',
+                      // Source information
+                      'source': item['source'] ?? 'session',
+                      'sourceStage': item['sourceStage'] ?? 'jobcard',
+                      'timestamp':
+                          item['timestamp'] ?? DateTime.now().toIso8601String(),
                     },
                   )
                   .toList(),
@@ -423,6 +504,9 @@ class UnifiedSessionService {
       case ActivityStage.jobCard:
         newStatus = 'JOB_CREATED';
         break;
+      case ActivityStage.qualityControl:
+        newStatus = 'COMPLETED'; // Final status - session is complete
+        break;
     }
 
     try {
@@ -446,6 +530,7 @@ class UnifiedSessionService {
         'testDrive': false,
         'report': false,
         'jobCard': false,
+        'qualityControl': false,
       };
 
       for (final activity in activities) {
@@ -465,6 +550,9 @@ class UnifiedSessionService {
           case ActivityStage.jobCard:
             progress['jobCard'] = true;
             break;
+          case ActivityStage.qualityControl:
+            progress['qualityControl'] = true;
+            break;
         }
       }
 
@@ -477,6 +565,7 @@ class UnifiedSessionService {
         'testDrive': false,
         'report': false,
         'jobCard': false,
+        'qualityControl': false,
       };
     }
   }
@@ -497,6 +586,8 @@ class UnifiedSessionService {
         return 'Report';
       case ActivityStage.jobCard:
         return 'Job Card';
+      case ActivityStage.qualityControl:
+        return 'Quality Control';
     }
   }
 

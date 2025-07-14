@@ -220,7 +220,7 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                             final orderData =
                                 data['order'] as Map<String, dynamic>? ?? {};
 
-                            // Extract order requests with proper validation
+                            // Extract order requests with unified structure validation
                             List<Map<String, dynamic>> requests = [];
                             if (orderData['requests'] != null) {
                               final requestsList =
@@ -234,26 +234,67 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                                         final requestMap =
                                             item as Map<String, dynamic>;
                                         return {
+                                          // Universal request fields
                                           'id':
                                               requestMap['id']?.toString() ??
                                               DateTime.now()
                                                   .millisecondsSinceEpoch
                                                   .toString(),
-                                          'title':
+                                          'request':
+                                              requestMap['request']
+                                                  ?.toString() ??
                                               requestMap['title']?.toString() ??
                                               requestMap['name']?.toString() ??
                                               'Untitled Request',
-                                          'isDone':
-                                              requestMap['isDone'] == true,
-                                          'notes':
+                                          'argancy':
+                                              requestMap['argancy']
+                                                  ?.toString() ??
+                                              requestMap['priority']
+                                                  ?.toString() ??
+                                              'medium',
+                                          // Job order specific fields
+                                          'jobOrderStatus':
+                                              requestMap['jobOrderStatus']
+                                                  ?.toString() ??
+                                              (requestMap['isDone'] == true
+                                                  ? 'completed'
+                                                  : 'pending'),
+                                          'jobOrderNotes':
+                                              requestMap['jobOrderNotes']
+                                                  ?.toString() ??
                                               requestMap['notes']?.toString() ??
                                               requestMap['description']
                                                   ?.toString() ??
                                               '',
-                                          'priority':
-                                              requestMap['priority']
+                                          'assignedTo':
+                                              requestMap['assignedTo']
                                                   ?.toString() ??
-                                              'medium',
+                                              '',
+                                          'estimatedHours':
+                                              requestMap['estimatedHours']
+                                                  ?.toString() ??
+                                              '',
+                                          'price':
+                                              requestMap['price']?.toString() ??
+                                              '0',
+                                          // Backward compatibility
+                                          'isDone':
+                                              requestMap['isDone'] == true ||
+                                              requestMap['jobOrderStatus'] ==
+                                                  'completed',
+                                          // Source information
+                                          'source':
+                                              requestMap['source']
+                                                  ?.toString() ??
+                                              'session',
+                                          'sourceStage':
+                                              requestMap['sourceStage']
+                                                  ?.toString() ??
+                                              'unknown',
+                                          'timestamp':
+                                              requestMap['timestamp']
+                                                  ?.toString() ??
+                                              DateTime.now().toIso8601String(),
                                         };
                                       })
                                       .toList();
@@ -705,88 +746,223 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
                                         final isChecked = RxBool(
                                           request['isDone'] ?? false,
                                         );
+                                        final String requestText =
+                                            request['request'] ??
+                                            'Unknown Request';
+                                        final String urgency =
+                                            request['argancy'] ?? 'medium';
+                                        final String jobOrderNotes =
+                                            request['jobOrderNotes'] ?? '';
+                                        final String source =
+                                            request['source'] ?? 'session';
+                                        final String sourceStage =
+                                            request['sourceStage'] ?? 'unknown';
+
                                         return Obx(
                                           () => Padding(
                                             padding: const EdgeInsets.symmetric(
                                               vertical: 3,
                                             ),
-                                            child: Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    request['title'],
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodyLarge
-                                                        ?.copyWith(
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color:
+                                            child: Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    isChecked.value
+                                                        ? colorScheme
+                                                            .surfaceContainerHighest
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            )
+                                                        : Colors.transparent,
+                                                border: Border.all(
+                                                  color: _getUrgencyColor(
+                                                    urgency,
+                                                  ).withValues(alpha: 0.3),
+                                                  width: 1,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          requestText,
+                                                          style: theme.textTheme.bodyLarge?.copyWith(
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                            color:
+                                                                isChecked.value
+                                                                    ? colorScheme
+                                                                        .outline
+                                                                    : colorScheme
+                                                                        .onSurface,
+                                                            decoration:
+                                                                isChecked.value
+                                                                    ? TextDecoration
+                                                                        .lineThrough
+                                                                    : null,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 12),
+                                                      GestureDetector(
+                                                        onTap: () {
+                                                          isChecked.value =
+                                                              !isChecked.value;
+                                                          _updateRequestStatus(
+                                                            jobOrderId:
+                                                                jobOrder['id']
+                                                                    as String,
+                                                            requestId:
+                                                                request['id']
+                                                                    as String,
+                                                            isDone:
+                                                                isChecked.value,
+                                                            newStatus:
+                                                                isChecked.value
+                                                                    ? 'completed'
+                                                                    : 'pending',
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          width: 22,
+                                                          height: 22,
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                isChecked.value
+                                                                    ? colorScheme
+                                                                        .primary
+                                                                    : Colors
+                                                                        .transparent,
+                                                            border: Border.all(
+                                                              color:
+                                                                  isChecked
+                                                                          .value
+                                                                      ? colorScheme
+                                                                          .primary
+                                                                      : colorScheme
+                                                                          .outline,
+                                                              width: 2,
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  6,
+                                                                ),
+                                                          ),
+                                                          child:
                                                               isChecked.value
-                                                                  ? colorScheme
-                                                                      .outline
-                                                                  : colorScheme
-                                                                      .onSurface,
-                                                          decoration:
-                                                              isChecked.value
-                                                                  ? TextDecoration
-                                                                      .lineThrough
+                                                                  ? Icon(
+                                                                    Icons.check,
+                                                                    color:
+                                                                        colorScheme
+                                                                            .onPrimary,
+                                                                    size: 16,
+                                                                  )
                                                                   : null,
                                                         ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                GestureDetector(
-                                                  onTap: () {
-                                                    isChecked.value =
-                                                        !isChecked.value;
-                                                    _updateRequestStatus(
-                                                      jobOrderId:
-                                                          jobOrder['id']
-                                                              as String,
-                                                      requestId:
-                                                          request['id']
-                                                              as String,
-                                                      isDone: isChecked.value,
-                                                    );
-                                                  },
-                                                  child: Container(
-                                                    width: 22,
-                                                    height: 22,
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          isChecked.value
-                                                              ? colorScheme
-                                                                  .primary
-                                                              : Colors
-                                                                  .transparent,
-                                                      border: Border.all(
-                                                        color:
-                                                            isChecked.value
-                                                                ? colorScheme
-                                                                    .primary
-                                                                : colorScheme
-                                                                    .outline,
-                                                        width: 2,
                                                       ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  // Request metadata
+                                                  Row(
+                                                    children: [
+                                                      // Urgency badge
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                              vertical: 2,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color:
+                                                              _getUrgencyColor(
+                                                                urgency,
+                                                              ).withValues(
+                                                                alpha: 0.1,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                4,
+                                                              ),
+                                                        ),
+                                                        child: Text(
+                                                          urgency.toUpperCase(),
+                                                          style: theme
+                                                              .textTheme
+                                                              .labelSmall
+                                                              ?.copyWith(
+                                                                color:
+                                                                    _getUrgencyColor(
+                                                                      urgency,
+                                                                    ),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                fontSize: 10,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      // Source badge
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                              vertical: 2,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: colorScheme
+                                                              .outline
+                                                              .withValues(
+                                                                alpha: 0.1,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                4,
+                                                              ),
+                                                        ),
+                                                        child: Text(
+                                                          '${_getSourceDisplayName(source)} • ${_getStageDisplayName(sourceStage)}',
+                                                          style: theme
+                                                              .textTheme
+                                                              .labelSmall
+                                                              ?.copyWith(
+                                                                color:
+                                                                    colorScheme
+                                                                        .outline,
+                                                                fontSize: 10,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  // Job order notes if available
+                                                  if (jobOrderNotes
+                                                      .isNotEmpty) ...[
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      jobOrderNotes,
+                                                      style: theme
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            color:
+                                                                colorScheme
+                                                                    .onSurfaceVariant,
+                                                            fontStyle:
+                                                                FontStyle
+                                                                    .italic,
                                                           ),
                                                     ),
-                                                    child:
-                                                        isChecked.value
-                                                            ? Icon(
-                                                              Icons.check,
-                                                              color:
-                                                                  colorScheme
-                                                                      .onPrimary,
-                                                              size: 16,
-                                                            )
-                                                            : null,
-                                                  ),
-                                                ),
-                                              ],
+                                                  ],
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         );
@@ -826,6 +1002,7 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
     required String jobOrderId,
     required String requestId,
     required bool isDone,
+    String? newStatus,
   }) async {
     try {
       // First fetch the current document to get all requests
@@ -844,6 +1021,8 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
           for (int i = 0; i < requests.length; i++) {
             if (requests[i]['id'] == requestId) {
               requests[i]['isDone'] = isDone;
+              requests[i]['jobOrderStatus'] =
+                  newStatus ?? (isDone ? 'completed' : 'pending');
               break;
             }
           }
@@ -874,6 +1053,57 @@ class _JobOrdersScreenState extends State<JobOrdersScreen> {
         backgroundColor: Colors.red.withValues(alpha: 0.7),
         colorText: Colors.white,
       );
+    }
+  }
+
+  // Helper method for urgency colors
+  Color _getUrgencyColor(String urgency) {
+    switch (urgency.toLowerCase()) {
+      case 'high':
+      case 'urgent':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Helper method for source display names
+  String _getSourceDisplayName(String source) {
+    switch (source.toLowerCase()) {
+      case 'session':
+        return 'Session';
+      case 'client_request':
+        return 'Client';
+      case 'inspection_finding':
+        return 'Inspection';
+      case 'test_drive_observation':
+        return 'Test Drive';
+      case 'manual':
+        return 'Manual';
+      default:
+        return source;
+    }
+  }
+
+  // Helper method for stage display names
+  String _getStageDisplayName(String stage) {
+    switch (stage.toLowerCase()) {
+      case 'clientnotes':
+        return 'Client Notes';
+      case 'inspection':
+        return 'Inspection';
+      case 'testdrive':
+        return 'Test Drive';
+      case 'report':
+        return 'Report';
+      case 'jobcard':
+        return 'Job Card';
+      default:
+        return stage;
     }
   }
 
