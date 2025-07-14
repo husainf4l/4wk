@@ -174,7 +174,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
           client: client,
           garageId: _authController.currentUser?.garageId ?? '',
           status: 'OPEN',
-          clientNoteId: null,
+          // clientNoteId: null,
         );
 
         // Navigate to session details screen using GetX instead of Navigator

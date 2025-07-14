@@ -1,0 +1,1 @@
+enum ActivityView { details, media }

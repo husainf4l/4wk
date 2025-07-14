@@ -5,10 +5,10 @@ class Session {
   final Map<String, dynamic> client; // Nested client object
   final String garageId;
   final String status; // OPEN, IN_PROGRESS, COMPLETED, etc.
-  final String? clientNoteId; // ID of associated client notes
-  final String? inspectionId; // ID of associated inspection
-  final String? testDriveId; // ID of associated test drive
-  final String? reportId; // ID of associated test drive
+  // final String? clientNoteId; // ID of associated client notes
+  // final String? inspectionId; // ID of associated inspection
+  // final String? testDriveId; // ID of associated test drive
+  // final String? reportId; // ID of associated test drive
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -19,10 +19,10 @@ class Session {
     required this.client,
     required this.garageId,
     required this.status,
-    this.clientNoteId,
-    this.inspectionId,
-    this.testDriveId,
-    this.reportId,
+    // this.clientNoteId,
+    // this.inspectionId,
+    // this.testDriveId,
+    // this.reportId,
     this.createdAt,
     this.updatedAt,
   });
@@ -34,10 +34,10 @@ class Session {
       'client': client,
       'garageId': garageId,
       'status': status,
-      'clientNoteId': clientNoteId,
-      'inspectionId': inspectionId,
-      'testDriveId': testDriveId,
-      'reportId': reportId,
+      // 'clientNoteId': clientNoteId,
+      // 'inspectionId': inspectionId,
+      // 'testDriveId': testDriveId,
+      // 'reportId': reportId,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
@@ -54,12 +54,12 @@ class Session {
       client: map['client'] ?? {},
       garageId: map['garageId'] ?? '',
       status: map['status'] ?? 'UNKNOWN',
-      clientNoteId: map['clientNoteId'],
-      inspectionId: map['inspectionId'],
-      reportId: map['reportId'],
-      testDriveId: map['testDriveId'],
-      createdAt: map['createdAt']?.toDate(),
-      updatedAt: map['updatedAt']?.toDate(),
+      // clientNoteId: map['clientNoteId'],
+      // inspectionId: map['inspectionId'],
+      // reportId: map['reportId'],
+      // testDriveId: map['testDriveId'],
+      // createdAt: map['createdAt']?.toDate(),
+      // updatedAt: map['updatedAt']?.toDate(),
     );
   }
 

@@ -5,10 +5,19 @@ import '../../models/unified_session_activity.dart';
 import '../../services/session/unified_session_service.dart';
 import '../../services/image_handling_service.dart';
 import '../../config/aws_config.dart';
-import '../../widgets/notes_editor_widget.dart';
-import '../../widgets/image_grid_widget.dart';
-import '../../widgets/request_list_widget.dart';
 import '../../widgets/video_player_widget.dart';
+import '../../widgets/session/notes_section.dart';
+import '../../widgets/session/media_section.dart';
+import '../../widgets/session/requests_section.dart';
+import '../../widgets/session/session_context_section.dart';
+import '../../widgets/session/mileage_section.dart';
+import '../../widgets/session/findings_section.dart';
+import '../../widgets/session/observations_section.dart';
+import '../../widgets/session/report_data_section.dart';
+import '../../widgets/session/finding_dialog.dart';
+import '../../widgets/session/observation_dialog.dart';
+
+enum ActivityView { details, media }
 
 class UnifiedSessionActivityScreen extends StatefulWidget {
   final String sessionId;
@@ -42,6 +51,9 @@ class _UnifiedSessionActivityScreenState
   );
   final ImageHandlingService _imageService = ImageHandlingService();
 
+  // View switcher state
+  Set<ActivityView> _selectedView = {ActivityView.details};
+
   bool _isLoading = false;
   bool _isSaving = false;
   bool _isAddingImage = false; // Prevent rapid image additions
@@ -50,11 +62,20 @@ class _UnifiedSessionActivityScreenState
   // Track individual image upload progress
   final Map<String, double> _imageUploadProgress =
       {}; // File path -> progress (0.0 to 1.0)
-  final Map<String, bool> _imageUploadCompleted = {}; // File path -> completed status
+  final Map<String, bool> _imageUploadCompleted =
+      {}; // File path -> completed status
 
   // Form controllers
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _mileageController = TextEditingController();
+  final TextEditingController _requestController = TextEditingController();
+
+  // Focus nodes
+  final FocusNode _notesFocusNode = FocusNode();
+  final FocusNode _requestFocusNode = FocusNode();
+
+  // Selected urgency for quick requests
+  String _selectedUrgency = 'Medium';
 
   // Common data
   List<String> _images = []; // Uploaded image URLs
@@ -76,6 +97,11 @@ class _UnifiedSessionActivityScreenState
   @override
   void initState() {
     super.initState();
+
+    // Listen to focus changes to update the UI
+    _notesFocusNode.addListener(() => setState(() {}));
+    _requestFocusNode.addListener(() => setState(() {}));
+
     _loadExistingActivity();
   }
 
@@ -83,6 +109,9 @@ class _UnifiedSessionActivityScreenState
   void dispose() {
     _notesController.dispose();
     _mileageController.dispose();
+    _requestController.dispose();
+    _notesFocusNode.dispose();
+    _requestFocusNode.dispose();
     // Clean up pending compressed images
     _cleanupPendingImages();
     // Clear progress tracking
@@ -265,8 +294,7 @@ class _UnifiedSessionActivityScreenState
           });
         } catch (e) {
           debugPrint('Failed to upload remaining images: $e');
-          setState(() {
-          });
+          setState(() {});
         }
 
         // Show feedback briefly
@@ -303,8 +331,7 @@ class _UnifiedSessionActivityScreenState
           }
         } catch (e) {
           debugPrint('Failed to upload video batch: $e');
-          setState(() {
-          });
+          setState(() {});
         }
 
         // Show success feedback briefly
@@ -391,8 +418,7 @@ class _UnifiedSessionActivityScreenState
       }
     } catch (e) {
       debugPrint('💥 Error during save: $e');
-      setState(() {
-      });
+      setState(() {});
       Get.snackbar('Error', 'An error occurred: $e');
     } finally {
       debugPrint('🏁 Save process finished');
@@ -531,146 +557,123 @@ class _UnifiedSessionActivityScreenState
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Session context (optional)
-            if (widget.sessionData != null) _buildSessionContext(),
-
-            // Stage-specific sections
-            ..._buildStageSpecificSections(),
-
-            // Notes section (always visible)
-            _buildNotesSection(),
-
-            // Service Requests section
-            _buildRequestsSection(),
-
-            // Media section
-            _buildImagesSection(),
-
-            const SizedBox(height: 100), // Extra space for FAB
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSection({
-    required String title,
-    required IconData icon,
-    required Widget child,
-    Widget? trailing,
-  }) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey[200]!),
-      ),
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, color: theme.primaryColor, size: 22),
-                    const SizedBox(width: 10),
-                    Text(
-                      title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ],
-                ),
-                if (trailing != null) trailing,
-              ],
-            ),
-            const Divider(height: 24, thickness: 1),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSessionContext() {
-    final session = widget.sessionData!;
-    final client = session['client'] ?? {};
-    final car = session['car'] ?? {};
-
-    return _buildSection(
-      title: 'Session Context',
-      icon: Icons.info_outline,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
         children: [
-          _buildInfoRow(
-            Icons.person_outline,
-            'Client',
-            client['name'] ?? 'Unknown',
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: 12.0,
+              horizontal: 16.0,
+            ),
+            child: SegmentedButton<ActivityView>(
+              segments: const [
+                ButtonSegment<ActivityView>(
+                  value: ActivityView.details,
+                  label: Text('Details'),
+                  icon: Icon(Icons.description),
+                ),
+                ButtonSegment<ActivityView>(
+                  value: ActivityView.media,
+                  label: Text('Media'),
+                  icon: Icon(Icons.perm_media),
+                ),
+              ],
+              selected: _selectedView,
+              onSelectionChanged: (newSelection) {
+                setState(() {
+                  _selectedView = newSelection;
+                });
+              },
+              style: SegmentedButton.styleFrom(
+                foregroundColor: Colors.grey[600],
+                selectedForegroundColor: theme.primaryColor,
+                selectedBackgroundColor: theme.primaryColor.withOpacity(0.1),
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          _buildInfoRow(
-            Icons.directions_car_outlined,
-            'Vehicle',
-            '${car['make'] ?? ''} ${car['model'] ?? ''} (${car['plateNumber'] ?? ''})',
-          ),
-          const SizedBox(height: 8),
-          _buildInfoRow(
-            Icons.flag_outlined,
-            'Status',
-            session['status'] ?? 'Unknown',
+          Expanded(
+            child:
+                _selectedView.first == ActivityView.details
+                    ? _buildDetailsView()
+                    : _buildMediaView(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: Colors.grey[600]),
-        const SizedBox(width: 8),
-        Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w600)),
-        Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
-      ],
+  Widget _buildDetailsView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Session context (optional)
+          if (widget.sessionData != null)
+            SessionContextSection(sessionData: widget.sessionData!),
+
+          // Stage-specific sections
+          ..._buildStageSpecificSections(),
+
+          // Notes section (always visible)
+          NotesSection(
+            controller: _notesController,
+            focusNode: _notesFocusNode,
+          ),
+
+          // Service Requests section
+          RequestsSection(
+            requests: _requests,
+            selectedUrgency: _selectedUrgency,
+            onUrgencyChanged: (value) {
+              setState(() {
+                _selectedUrgency = value;
+              });
+            },
+            onAddRequest: _addQuickRequest,
+            onRemoveRequest: _removeRequest,
+            requestController: _requestController,
+            requestFocusNode: _requestFocusNode,
+          ),
+
+          const SizedBox(height: 100), // Extra space for FAB
+        ],
+      ),
     );
   }
 
-  Widget _buildNotesSection() {
-    return _buildSection(
-      title: 'Notes',
-      icon: Icons.edit_note,
-      trailing: IconButton(
-        icon: const Icon(Icons.edit, color: Colors.blue),
-        onPressed: () {
-          NotesEditorWidget.showEditDialog(
-            context,
-            initialValue: _notesController.text,
-            onSave: (newNotes) {
+  Widget _buildMediaView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          MediaSection(
+            images: _images,
+            videos: _videos,
+            pendingImages: _pendingImages,
+            pendingVideos: _pendingVideos,
+            imageUploadProgress: _imageUploadProgress,
+            imageUploadCompleted: _imageUploadCompleted,
+            onRemoveUploadedImage: (index) async {
+              await _removeImage(index);
+            },
+            onRemoveSelectedImage: (index) {
               setState(() {
-                _notesController.text = newNotes;
+                final File imageToRemove = _pendingImages[index];
+                _pendingImages.removeAt(index);
+                // Clean up progress tracking
+                _imageUploadProgress.remove(imageToRemove.path);
+                _imageUploadCompleted.remove(imageToRemove.path);
               });
             },
-          );
-        },
-      ),
-      child: NotesEditorWidget(
-        notes: _notesController.text,
-        isEditing: false, // Display only, edit is via button
-        onEditPressed: () {},
+            onAddImage: _addImage,
+            onAddVideo: _addVideo,
+            onRemoveExistingVideo: _removeExistingVideo,
+            onRemovePendingVideo: _removePendingVideo,
+            onOpenVideoPlayer: _openVideoPlayer,
+          ),
+          const SizedBox(height: 100), // Extra space for FAB
+        ],
       ),
     );
   }
@@ -678,463 +681,93 @@ class _UnifiedSessionActivityScreenState
   List<Widget> _buildStageSpecificSections() {
     switch (widget.stage) {
       case ActivityStage.clientNotes:
-        return [_buildMileageSection()];
+        return [
+          MileageSection(
+            controller: _mileageController,
+            onChanged: (value) => _mileage = value,
+          ),
+        ];
       case ActivityStage.inspection:
         return [
-          _buildFindingsSection(),
-        ]; // Notes and service requests are enough
+          FindingsSection(
+            findings: _findings,
+            onAdd: _addFinding,
+            onRemove: _removeFinding,
+            onEdit: _editFinding,
+          ),
+        ];
       case ActivityStage.testDrive:
         return [
-          _buildObservationsSection(),
-        ]; // Notes and service requests are enough
+          ObservationsSection(
+            observations: _observations,
+            onAdd: _addObservation,
+            onRemove: _removeObservation,
+            onEdit: _editObservation,
+          ),
+        ];
       case ActivityStage.report:
-        return [_buildReportDataSection()];
+        return [
+          ReportDataSection(
+            reportData: _reportData,
+            onTitleChanged: (value) => _reportData['title'] = value,
+            onSummaryChanged: (value) => _reportData['summary'] = value,
+          ),
+        ];
     }
   }
 
-  Widget _buildMileageSection() {
-    return _buildSection(
-      title: 'Vehicle Mileage',
-      icon: Icons.speed,
-      child: TextFormField(
-        controller: _mileageController,
-        decoration: const InputDecoration(
-          labelText: 'Current Mileage',
-          hintText: 'Enter vehicle mileage (e.g., 50,000)',
-          suffixText: 'km',
-          border: OutlineInputBorder(),
-        ),
-        keyboardType: TextInputType.number,
-        onChanged: (value) => _mileage = value,
-      ),
-    );
-  }
-
-  Widget _buildFindingsSection() {
-    return _buildSection(
-      title: 'Inspection Findings',
-      icon: Icons.plagiarism_outlined,
-      trailing: IconButton(
-        onPressed: _addFinding,
-        icon: const Icon(Icons.add_circle, color: Colors.blue),
-        tooltip: 'Add Finding',
-      ),
-      child: Column(
-        children: [
-          if (_findings.isEmpty)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 24.0),
-                child: Text('No findings added yet.'),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _findings.length,
-              itemBuilder: (context, index) {
-                final finding = _findings[index];
-                return _buildFindingItem(index, finding);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFindingItem(int index, Map<String, dynamic> finding) {
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[200]!),
-      ),
-      child: ListTile(
-        title: Text(finding['title'] ?? 'Finding ${index + 1}'),
-        subtitle: Text(finding['description'] ?? ''),
-        trailing: IconButton(
-          onPressed: () => _removeFinding(index),
-          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-        ),
-        onTap: () => _editFinding(index, finding),
-      ),
-    );
-  }
-
-  Widget _buildObservationsSection() {
-    return _buildSection(
-      title: 'Test Drive Observations',
-      icon: Icons.visibility_outlined,
-      trailing: IconButton(
-        onPressed: _addObservation,
-        icon: const Icon(Icons.add_circle, color: Colors.blue),
-        tooltip: 'Add Observation',
-      ),
-      child: Column(
-        children: [
-          if (_observations.isEmpty)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 24.0),
-                child: Text('No observations added yet.'),
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _observations.length,
-              itemBuilder: (context, index) {
-                final observation = _observations[index];
-                return _buildObservationItem(index, observation);
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildObservationItem(int index, Map<String, dynamic> observation) {
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[200]!),
-      ),
-      child: ListTile(
-        title: Text(observation['title'] ?? 'Observation ${index + 1}'),
-        subtitle: Text(observation['description'] ?? ''),
-        trailing: IconButton(
-          onPressed: () => _removeObservation(index),
-          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-        ),
-        onTap: () => _editObservation(index, observation),
-      ),
-    );
-  }
-
-  Widget _buildReportDataSection() {
-    return _buildSection(
-      title: 'Report Configuration',
-      icon: Icons.settings_outlined,
-      child: Column(
-        children: [
-          TextFormField(
-            decoration: const InputDecoration(
-              labelText: 'Report Title',
-              border: OutlineInputBorder(),
-            ),
-            initialValue: _reportData['title']?.toString() ?? '',
-            onChanged: (value) => _reportData['title'] = value,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            decoration: const InputDecoration(
-              labelText: 'Summary',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 3,
-            initialValue: _reportData['summary']?.toString() ?? '',
-            onChanged: (value) => _reportData['summary'] = value,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImagesSection() {
-    return _buildSection(
-      title: 'Media',
-      icon: Icons.perm_media,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            onPressed: _addImage,
-            icon: const Icon(Icons.add_photo_alternate, color: Colors.green),
-            tooltip: 'Add Images',
-          ),
-          IconButton(
-            onPressed: _addVideo,
-            icon: const Icon(Icons.videocam, color: Colors.orange),
-            tooltip: 'Add Videos',
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Images section
-          if (_images.isNotEmpty || _pendingImages.isNotEmpty) ...[
-            Text(
-              'Images (${_images.length + _pendingImages.length})',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            ImageGridWidget(
-              uploadedImageUrls: _images,
-              selectedImages: _pendingImages,
-              isEditing: true,
-              uploadProgress: _imageUploadProgress,
-              uploadCompleted: _imageUploadCompleted,
-              onRemoveUploadedImage: (index) async {
-                await _removeImage(index);
-              },
-              onRemoveSelectedImage: (index) {
-                setState(() {
-                  final File imageToRemove = _pendingImages[index];
-                  _pendingImages.removeAt(index);
-                  // Clean up progress tracking
-                  _imageUploadProgress.remove(imageToRemove.path);
-                  _imageUploadCompleted.remove(imageToRemove.path);
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Videos section
-          if (_videos.isNotEmpty || _pendingVideos.isNotEmpty) ...[
-            Text(
-              'Videos (${_videos.length + _pendingVideos.length})',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            _buildVideosList(),
-          ],
-
-          // Empty state
-          if (_images.isEmpty &&
-              _pendingImages.isEmpty &&
-              _videos.isEmpty &&
-              _pendingVideos.isEmpty)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 24.0),
-                child: Text('No media added yet.'),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRequestsSection() {
-    return _buildSection(
-      title: 'Service Requests',
-      icon: Icons.build,
-      trailing: IconButton(
-        onPressed: _addRequest,
-        icon: const Icon(Icons.add_circle, color: Colors.blue),
-        tooltip: 'Add Request',
-      ),
-      child: RequestListWidget(
-        requests: _requests,
-        isEditing: true,
-        onRemoveRequest: (request) {
-          setState(() => _requests.remove(request));
-        },
-        onEditArgancy: (request, newUrgency) {
-          setState(() {
-            final index = _requests.indexOf(request);
-            if (index != -1) {
-              _requests[index]['argancy'] = newUrgency;
-            }
-          });
-        },
-      ),
-    );
-  }
-
   // Finding methods
-  void _addFinding() {
-    _showFindingDialog();
+  void _addFinding() async {
+    final result = await Get.dialog<Map<String, dynamic>>(
+      const FindingDialog(),
+    );
+    if (result != null) {
+      setState(() {
+        _findings.add(result);
+      });
+    }
   }
 
-  void _editFinding(int index, Map<String, dynamic> finding) {
-    _showFindingDialog(index: index, finding: finding);
+  void _editFinding(int index, Map<String, dynamic> finding) async {
+    final result = await Get.dialog<Map<String, dynamic>>(
+      FindingDialog(finding: finding),
+    );
+    if (result != null) {
+      setState(() {
+        _findings[index] = result;
+      });
+    }
   }
 
   void _removeFinding(int index) {
     setState(() => _findings.removeAt(index));
   }
 
-  void _showFindingDialog({int? index, Map<String, dynamic>? finding}) {
-    final titleController = TextEditingController(
-      text: finding?['title'] ?? '',
-    );
-    final descController = TextEditingController(
-      text: finding?['description'] ?? '',
-    );
-
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: Colors.white,
-        title: Row(
-          children: [
-            const Icon(Icons.plagiarism_outlined, color: Colors.blue),
-            const SizedBox(width: 10),
-            Text(index != null ? 'Edit Finding' : 'Add Finding'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Finding Title',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descController,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final newFinding = {
-                'title': titleController.text.trim(),
-                'description': descController.text.trim(),
-                'timestamp': DateTime.now().toIso8601String(),
-              };
-
-              setState(() {
-                if (index != null) {
-                  _findings[index] = newFinding;
-                } else {
-                  _findings.add(newFinding);
-                }
-              });
-
-              Get.back();
-            },
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
   // Observation methods
-  void _addObservation() {
-    _showObservationDialog();
+  void _addObservation() async {
+    final result = await Get.dialog<Map<String, dynamic>>(
+      const ObservationDialog(),
+    );
+    if (result != null) {
+      setState(() {
+        _observations.add(result);
+      });
+    }
   }
 
-  void _editObservation(int index, Map<String, dynamic> observation) {
-    _showObservationDialog(index: index, observation: observation);
+  void _editObservation(int index, Map<String, dynamic> observation) async {
+    final result = await Get.dialog<Map<String, dynamic>>(
+      ObservationDialog(observation: observation),
+    );
+    if (result != null) {
+      setState(() {
+        _observations[index] = result;
+      });
+    }
   }
 
   void _removeObservation(int index) {
     setState(() => _observations.removeAt(index));
-  }
-
-  void _showObservationDialog({int? index, Map<String, dynamic>? observation}) {
-    final titleController = TextEditingController(
-      text: observation?['title'] ?? '',
-    );
-    final descController = TextEditingController(
-      text: observation?['description'] ?? '',
-    );
-
-    Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: Colors.white,
-        title: Row(
-          children: [
-            const Icon(Icons.visibility_outlined, color: Colors.blue),
-            const SizedBox(width: 10),
-            Text(index != null ? 'Edit Observation' : 'Add Observation'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Observation Title',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descController,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final newObservation = {
-                'title': titleController.text.trim(),
-                'description': descController.text.trim(),
-                'timestamp': DateTime.now().toIso8601String(),
-              };
-
-              setState(() {
-                if (index != null) {
-                  _observations[index] = newObservation;
-                } else {
-                  _observations.add(newObservation);
-                }
-              });
-
-              Get.back();
-            },
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
   }
 
   // Image and Video methods
@@ -1195,120 +828,6 @@ class _UnifiedSessionActivityScreenState
     setState(() {
       _pendingVideos.addAll(videos);
     });
-  }
-
-  Widget _buildVideosList() {
-    // Convert existing video URLs to display items
-    List<Widget> videoWidgets = [];
-
-    // Add existing videos (URLs)
-    for (String videoUrl in _videos) {
-      videoWidgets.add(
-        Stack(
-          children: [
-            GestureDetector(
-              onTap: () => _openVideoPlayer(videoUrl: videoUrl),
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey),
-                ),
-                child: const Icon(
-                  Icons.play_circle_fill,
-                  size: 40,
-                  color: Colors.blue,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              left: 4,
-              child: GestureDetector(
-                onTap: () => _removeExistingVideo(videoUrl),
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.close, size: 12, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Add pending videos (Files)
-    for (File video in _pendingVideos) {
-      videoWidgets.add(
-        Stack(
-          children: [
-            GestureDetector(
-              onTap: () => _openVideoPlayer(videoFile: video),
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey),
-                ),
-                child: const Icon(
-                  Icons.play_circle_fill,
-                  size: 40,
-                  color: Colors.orange,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  color: Colors.orange,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.schedule,
-                  size: 12,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              left: 4,
-              child: GestureDetector(
-                onTap: () => _removePendingVideo(video),
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.close, size: 12, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (videoWidgets.isEmpty) return const SizedBox();
-
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: videoWidgets),
-      ],
-    );
   }
 
   void _removeExistingVideo(String videoUrl) {
@@ -1554,19 +1073,32 @@ class _UnifiedSessionActivityScreenState
   }
 
   // Request methods
-  void _addRequest() {
-    RequestListWidget.showAddRequestDialog(
-      context,
-      onAddRequest: (request, urgency) {
-        setState(() {
-          _requests.add({
-            'request': request,
-            'argancy': urgency,
-            'timestamp': DateTime.now().toIso8601String(),
-          });
-        });
-      },
+  void _addQuickRequest(String requestText) {
+    setState(() {
+      _requests.add({
+        'request': requestText,
+        'argancy': _selectedUrgency,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    });
+
+    // Clear the input field and keep focus for next entry
+    _requestController.clear();
+
+    // Show quick feedback
+    Get.snackbar(
+      'Request Added',
+      '$requestText (${_selectedUrgency.toLowerCase()} priority)',
+      duration: const Duration(seconds: 1),
+      backgroundColor: Colors.green.withValues(alpha: 0.8),
+      colorText: Colors.white,
     );
+  }
+
+  void _removeRequest(int index) {
+    setState(() {
+      _requests.removeAt(index);
+    });
   }
 
   void _openVideoPlayer({String? videoUrl, File? videoFile}) {
