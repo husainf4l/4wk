@@ -24,6 +24,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
     'inspection': false,
     'testDrive': false,
     'report': false,
+    'jobCard': false,
   };
 
   @override
@@ -45,6 +46,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
         'inspection': false,
         'testDrive': false,
         'report': false,
+        'jobCard': false,
       };
 
       for (var doc in snapshot.docs) {
@@ -328,12 +330,31 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                       children: [
                         Expanded(
                           child: _SessionBox(
-                            icon: Icons.assignment,
-                            title: 'Job Order',
+                            icon: Icons.assignment_outlined,
+                            title: 'Job Card',
                             color: accentColor,
-                            // Job Order requires reportId to be present
-                            // hasData: widget.session.reportId != null,
-                            onTap: () {},
+                            hasData: stageHasData['jobCard'] ?? false,
+                            onTap: () async {
+                              // Navigate to unified session activity screen for job card
+                              final result = await Get.to(
+                                () => UnifiedSessionActivityScreen(
+                                  sessionId: widget.session.id,
+                                  clientId: widget.session.clientId,
+                                  carId: widget.session.car['id'] ?? '',
+                                  garageId: widget.session.garageId,
+                                  stage: ActivityStage.jobCard,
+                                  sessionData: {
+                                    'car': widget.session.car,
+                                    'client': widget.session.client,
+                                    'status': widget.session.status,
+                                  },
+                                ),
+                              );
+                              // Refresh stage data when returning from activity screen
+                              if (result == true) {
+                                _checkStageData();
+                              }
+                            },
                           ),
                         ),
                         // Adding an empty container for the second column to maintain layout consistency
@@ -343,8 +364,26 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             icon: Icons.high_quality,
                             title: 'QC',
                             color: accentColor,
-                            onTap: () {
-                              // TODO: Implement QC navigation
+                            hasData: stageHasData['qc'] ?? false,
+                            onTap: () async {
+                              // Navigate to Quality Control screen
+                              final result = await Get.to(
+                                () => QualityControlScreen(
+                                  sessionId: widget.session.id,
+                                  clientId: widget.session.clientId,
+                                  carId: widget.session.car['id'] ?? '',
+                                  garageId: widget.session.garageId,
+                                  sessionData: {
+                                    'car': widget.session.car,
+                                    'client': widget.session.client,
+                                    'status': widget.session.status,
+                                  },
+                                ),
+                              );
+                              // Refresh stage data when returning from QC screen
+                              if (result == true) {
+                                _checkStageData();
+                              }
                             },
                           ),
                         ),

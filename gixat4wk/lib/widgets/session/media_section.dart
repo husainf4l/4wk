@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../../models/unified_session_activity.dart';
-import '../../services/image_handling_service.dart';
-import '../../config/aws_config.dart';
 import '../../widgets/image_grid_widget.dart';
-import '../../widgets/video_player_widget.dart';
 import './section_card.dart';
 
 class MediaSection extends StatefulWidget {

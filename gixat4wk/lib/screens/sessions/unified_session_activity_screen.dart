@@ -210,6 +210,8 @@ class _UnifiedSessionActivityScreenState
         return 'Test Drive';
       case ActivityStage.report:
         return 'Report';
+      case ActivityStage.jobCard:
+        return 'Job Card';
     }
   }
 
@@ -223,6 +225,8 @@ class _UnifiedSessionActivityScreenState
         return Icons.directions_car;
       case ActivityStage.report:
         return Icons.assignment;
+      case ActivityStage.jobCard:
+        return Icons.assignment_outlined;
     }
   }
 
@@ -484,6 +488,20 @@ class _UnifiedSessionActivityScreenState
           videos: _videos,
           requests: _requests,
         );
+
+      case ActivityStage.jobCard:
+        return UnifiedSessionActivity(
+          id: id,
+          sessionId: widget.sessionId,
+          clientId: widget.clientId,
+          carId: widget.carId,
+          garageId: widget.garageId,
+          stage: ActivityStage.jobCard,
+          notes: _notesController.text.trim(),
+          requests: _requests, // jobCardItems are stored in 'requests'
+          images: _images,
+          videos: _videos,
+        );
     }
   }
 
@@ -586,7 +604,7 @@ class _UnifiedSessionActivityScreenState
               style: SegmentedButton.styleFrom(
                 foregroundColor: Colors.grey[600],
                 selectedForegroundColor: theme.primaryColor,
-                selectedBackgroundColor: theme.primaryColor.withOpacity(0.1),
+                selectedBackgroundColor: theme.primaryColor.withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -713,7 +731,326 @@ class _UnifiedSessionActivityScreenState
             onSummaryChanged: (value) => _reportData['summary'] = value,
           ),
         ];
+      case ActivityStage.jobCard:
+        return [_buildJobCardSection()];
     }
+  }
+
+  Widget _buildJobCardSection() {
+    return FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
+      future: _getJobCardItemsGroupedByCar(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text('Error loading job card data: ${snapshot.error}'),
+            ),
+          );
+        }
+
+        final groupedItems = snapshot.data ?? {};
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.build_circle_outlined,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Job Card Items',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (groupedItems.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.work_outline,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No job card items found',
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Items from client notes, inspection, and test drive will appear here',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ...groupedItems.entries.map(
+                    (entry) => _buildCarJobSection(entry.key, entry.value),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCarJobSection(String carId, List<Map<String, dynamic>> items) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.directions_car,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Car ID: ${carId.substring(0, 8)}...',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${items.length} items',
+                    style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...items.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return _buildJobCardItem(item, index);
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJobCardItem(Map<String, dynamic> item, int index) {
+    final itemType = item['type'] ?? 'Unknown';
+    final itemText =
+        item['text'] ??
+        item['request'] ??
+        item['description'] ??
+        'No description';
+    final priority = item['priority'] ?? item['argancy'] ?? 'Medium';
+    final isCompleted = item['completed'] ?? false;
+
+    Color priorityColor;
+    switch (priority.toLowerCase()) {
+      case 'high':
+        priorityColor = Colors.red;
+        break;
+      case 'medium':
+        priorityColor = Colors.orange;
+        break;
+      case 'low':
+        priorityColor = Colors.green;
+        break;
+      default:
+        priorityColor = Colors.grey;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isCompleted ? Colors.green.withValues(alpha: 0.1) : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color:
+              isCompleted ? Colors.green : Colors.grey.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Completion checkbox
+          Checkbox(
+            value: isCompleted,
+            onChanged: (bool? value) {
+              _updateJobCardItemCompletion(index, value ?? false);
+            },
+          ),
+          const SizedBox(width: 8),
+          // Item content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: priorityColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        priority,
+                        style: TextStyle(
+                          color: priorityColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      itemType,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  itemText,
+                  style: TextStyle(
+                    fontSize: 14,
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                    color: isCompleted ? Colors.grey : Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<Map<String, List<Map<String, dynamic>>>>
+  _getJobCardItemsGroupedByCar() async {
+    final Map<String, List<Map<String, dynamic>>> groupedItems = {};
+
+    try {
+      // Get all activities for this session
+      final activities = await _unifiedService.getActivitiesForSession(
+        sessionId: widget.sessionId,
+      );
+
+      for (final activity in activities) {
+        final carId = activity.carId;
+        if (!groupedItems.containsKey(carId)) {
+          groupedItems[carId] = [];
+        }
+
+        // Add requests from all stages
+        for (final request in activity.requests) {
+          groupedItems[carId]!.add({
+            'type': 'Request',
+            'text': request['request'] ?? request['description'] ?? '',
+            'priority': request['argancy'] ?? request['priority'] ?? 'Medium',
+            'completed': request['completed'] ?? false,
+            'source': activity.stage.displayName,
+            'activityId': activity.id,
+          });
+        }
+
+        // Add findings from inspection
+        if (activity.findings != null) {
+          for (final finding in activity.findings!) {
+            groupedItems[carId]!.add({
+              'type': 'Finding',
+              'text': finding['description'] ?? finding['issue'] ?? '',
+              'priority':
+                  finding['severity'] ?? finding['priority'] ?? 'Medium',
+              'completed': finding['completed'] ?? false,
+              'source': 'Inspection',
+              'activityId': activity.id,
+            });
+          }
+        }
+
+        // Add observations from test drive
+        if (activity.observations != null) {
+          for (final observation in activity.observations!) {
+            groupedItems[carId]!.add({
+              'type': 'Observation',
+              'text': observation['description'] ?? observation['issue'] ?? '',
+              'priority':
+                  observation['severity'] ??
+                  observation['priority'] ??
+                  'Medium',
+              'completed': observation['completed'] ?? false,
+              'source': 'Test Drive',
+              'activityId': activity.id,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching job card items: $e');
+    }
+
+    return groupedItems;
+  }
+
+  void _updateJobCardItemCompletion(int index, bool isCompleted) {
+    setState(() {
+      if (index < _requests.length) {
+        _requests[index]['completed'] = isCompleted;
+      }
+    });
   }
 
   // Finding methods
@@ -1010,6 +1347,8 @@ class _UnifiedSessionActivityScreenState
         return '${AWSConfig.carImagesFolder}/test-drive';
       case ActivityStage.report:
         return '${AWSConfig.carImagesFolder}/reports';
+      case ActivityStage.jobCard:
+        return '${AWSConfig.carImagesFolder}/job-cards';
     }
   }
 

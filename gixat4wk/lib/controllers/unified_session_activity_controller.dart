@@ -79,6 +79,8 @@ class UnifiedSessionActivityController extends GetxController {
         return 'Test Drive';
       case ActivityStage.report:
         return 'Report';
+      case ActivityStage.jobCard:
+        return 'Job Card';
     }
   }
 
@@ -92,6 +94,8 @@ class UnifiedSessionActivityController extends GetxController {
         return Icons.directions_car;
       case ActivityStage.report:
         return Icons.assignment;
+      case ActivityStage.jobCard:
+        return Icons.assignment_turned_in_outlined;
     }
   }
 
@@ -356,6 +360,17 @@ class UnifiedSessionActivityController extends GetxController {
           videos: videos,
           requests: requests,
         );
+      case ActivityStage.jobCard:
+        return UnifiedSessionActivity.forJobCard(
+          sessionId: sessionId,
+          clientId: clientId,
+          carId: carId,
+          garageId: garageId,
+          notes: notesController.text.trim(),
+          jobCardItems: requests.toList(), // Use toList() for type safety
+          images: images.toList(),
+          videos: videos.toList(),
+        );
     }
   }
 
@@ -592,6 +607,8 @@ class UnifiedSessionActivityController extends GetxController {
         return '${AWSConfig.carImagesFolder}/test-drive';
       case ActivityStage.report:
         return '${AWSConfig.carImagesFolder}/reports';
+      case ActivityStage.jobCard:
+        return '${AWSConfig.carImagesFolder}/job-cards';
     }
   }
 
@@ -632,7 +649,7 @@ class UnifiedSessionActivityController extends GetxController {
       'Request Added',
       '$requestText (${selectedUrgency.value.toLowerCase()} priority)',
       duration: const Duration(seconds: 1),
-      backgroundColor: Colors.green.withOpacity(0.8),
+      backgroundColor: Colors.green.withValues(alpha: 0.8),
       colorText: Colors.white,
     );
   }

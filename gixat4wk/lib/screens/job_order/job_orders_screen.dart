@@ -4,14 +4,26 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:gixat4wk/screens/job_order/job_order_request_history_screen.dart';
 
-class JobOrdersScreen extends StatelessWidget {
+class JobOrdersScreen extends StatefulWidget {
   const JobOrdersScreen({super.key});
+
+  @override
+  State<JobOrdersScreen> createState() => _JobOrdersScreenState();
+}
+
+class _JobOrdersScreenState extends State<JobOrdersScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final RxString _searchQuery = ''.obs;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final TextEditingController searchController = TextEditingController();
-    final RxString searchQuery = ''.obs;
 
     return SafeArea(
       child: Padding(
@@ -22,10 +34,46 @@ class JobOrdersScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Job Orders',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Job Orders',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Manage vehicle service requests',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.assignment_outlined,
+                        size: 16,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Active',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -41,9 +89,9 @@ class JobOrdersScreen extends StatelessWidget {
                     vertical: 0,
                   ),
                   child: CupertinoSearchTextField(
-                    controller: searchController,
+                    controller: _searchController,
                     onChanged: (value) {
-                      searchQuery.value = value.trim().toLowerCase();
+                      _searchQuery.value = value.trim().toLowerCase();
                     },
                     placeholder: 'Search job orders',
                     placeholderStyle: const TextStyle(
@@ -151,7 +199,7 @@ class JobOrdersScreen extends StatelessWidget {
                       }).toList();
 
                   return Obx(() {
-                    final query = searchQuery.value;
+                    final query = _searchQuery.value;
                     final filteredJobOrders =
                         jobOrders.where((jobOrder) {
                           if (query.isEmpty) return true;

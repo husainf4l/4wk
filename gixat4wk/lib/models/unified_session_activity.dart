@@ -1,3 +1,48 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Represents the different stages of a session activity
+enum ActivityStage { clientNotes, inspection, testDrive, report, jobCard }
+
+/// Represents the status of an activity
+enum ActivityStatus { draft, completed, reviewed }
+
+/// Extension to provide user-friendly names for ActivityStage
+extension ActivityStageExtension on ActivityStage {
+  String get displayName {
+    switch (this) {
+      case ActivityStage.clientNotes:
+        return 'Client Notes';
+      case ActivityStage.inspection:
+        return 'Inspection';
+      case ActivityStage.testDrive:
+        return 'Test Drive';
+      case ActivityStage.report:
+        return 'Report';
+      case ActivityStage.jobCard:
+        return 'Job Card';
+    }
+  }
+
+  String get firestoreValue => toString().split('.').last;
+}
+
+/// Extension to provide user-friendly names for ActivityStatus
+extension ActivityStatusExtension on ActivityStatus {
+  String get displayName {
+    switch (this) {
+      case ActivityStatus.draft:
+        return 'Draft';
+      case ActivityStatus.completed:
+        return 'Completed';
+      case ActivityStatus.reviewed:
+        return 'Reviewed';
+    }
+  }
+
+  String get firestoreValue => toString().split('.').last;
+}
+
+/// Unified model for all session activities across different stages
 class UnifiedSessionActivity {
   final String id;
   final String sessionId;
@@ -47,20 +92,21 @@ class UnifiedSessionActivity {
     this.status = ActivityStatus.draft,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  /// Converts the activity to a Map for Firestore storage
   Map<String, dynamic> toMap() {
-    final map = {
+    final map = <String, dynamic>{
       'sessionId': sessionId,
       'clientId': clientId,
       'carId': carId,
       'garageId': garageId,
-      'stage': stage.toString().split('.').last,
+      'stage': stage.firestoreValue,
       'notes': notes,
       'images': images,
       'videos': videos,
       'requests': requests,
-      'status': status.toString().split('.').last,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
+      'status': status.firestoreValue,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       'createdBy': createdBy,
       'updatedBy': updatedBy,
     };
@@ -73,48 +119,85 @@ class UnifiedSessionActivity {
     return map;
   }
 
+  /// Creates an activity instance from a Map (typically from Firestore)
   factory UnifiedSessionActivity.fromMap(Map<String, dynamic> map, String id) {
     return UnifiedSessionActivity(
       id: id,
-      sessionId: map['sessionId'] ?? '',
-      clientId: map['clientId'] ?? '',
-      carId: map['carId'] ?? '',
-      garageId: map['garageId'] ?? '',
-      stage: ActivityStage.values.firstWhere(
-        (s) => s.toString().split('.').last == map['stage'],
-        orElse: () => ActivityStage.clientNotes,
+      sessionId: map['sessionId'] as String? ?? '',
+      clientId: map['clientId'] as String? ?? '',
+      carId: map['carId'] as String? ?? '',
+      garageId: map['garageId'] as String? ?? '',
+      stage: _parseActivityStage(map['stage'] as String?),
+      notes: map['notes'] as String? ?? '',
+      images: List<String>.from(map['images'] as List? ?? <String>[]),
+      videos: List<String>.from(map['videos'] as List? ?? <String>[]),
+      requests: List<Map<String, dynamic>>.from(
+        map['requests'] as List? ?? <Map<String, dynamic>>[],
       ),
-      notes: map['notes'] ?? '',
-      images: List<String>.from(map['images'] ?? []),
-      videos: List<String>.from(map['videos'] ?? []),
-      requests: List<Map<String, dynamic>>.from(map['requests'] ?? []),
       findings:
           map['findings'] != null
-              ? List<Map<String, dynamic>>.from(map['findings'])
+              ? List<Map<String, dynamic>>.from(map['findings'] as List)
               : null,
       observations:
           map['observations'] != null
-              ? List<Map<String, dynamic>>.from(map['observations'])
+              ? List<Map<String, dynamic>>.from(map['observations'] as List)
               : null,
-      reportData: map['reportData'],
-      createdAt: map['createdAt']?.toDate() ?? DateTime.now(),
-      updatedAt: map['updatedAt']?.toDate(),
-      createdBy: map['createdBy'],
-      updatedBy: map['updatedBy'],
-      status: ActivityStatus.values.firstWhere(
-        (s) => s.toString().split('.').last == map['status'],
-        orElse: () => ActivityStatus.draft,
-      ),
+      reportData: map['reportData'] as Map<String, dynamic>?,
+      createdAt: _parseTimestamp(map['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseTimestamp(map['updatedAt']),
+      createdBy: map['createdBy'] as String?,
+      updatedBy: map['updatedBy'] as String?,
+      status: _parseActivityStatus(map['status'] as String?),
     );
   }
 
-  // Helper methods for different stages
-  bool isClientNotes() => stage == ActivityStage.clientNotes;
-  bool isInspection() => stage == ActivityStage.inspection;
-  bool isTestDrive() => stage == ActivityStage.testDrive;
-  bool isReport() => stage == ActivityStage.report;
+  /// Creates an activity instance from a Firestore document snapshot
+  factory UnifiedSessionActivity.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    if (!snapshot.exists || snapshot.data() == null) {
+      throw ArgumentError('Document does not exist or has no data');
+    }
 
-  // Create specialized instances for each stage
+    return UnifiedSessionActivity.fromMap(snapshot.data()!, snapshot.id);
+  }
+
+  /// Helper method to parse ActivityStage from string
+  static ActivityStage _parseActivityStage(String? stageString) {
+    if (stageString == null) return ActivityStage.clientNotes;
+
+    return ActivityStage.values.firstWhere(
+      (stage) => stage.firestoreValue == stageString,
+      orElse: () => ActivityStage.clientNotes,
+    );
+  }
+
+  /// Helper method to parse ActivityStatus from string
+  static ActivityStatus _parseActivityStatus(String? statusString) {
+    if (statusString == null) return ActivityStatus.draft;
+
+    return ActivityStatus.values.firstWhere(
+      (status) => status.firestoreValue == statusString,
+      orElse: () => ActivityStatus.draft,
+    );
+  }
+
+  /// Helper method to parse Timestamp to DateTime
+  static DateTime? _parseTimestamp(dynamic timestamp) {
+    if (timestamp == null) return null;
+    if (timestamp is Timestamp) return timestamp.toDate();
+    if (timestamp is DateTime) return timestamp;
+    return null;
+  }
+
+  // Helper methods for different stages
+  bool get isClientNotes => stage == ActivityStage.clientNotes;
+  bool get isInspection => stage == ActivityStage.inspection;
+  bool get isTestDrive => stage == ActivityStage.testDrive;
+  bool get isReport => stage == ActivityStage.report;
+  bool get isJobCard => stage == ActivityStage.jobCard;
+
+  /// Creates a specialized instance for client notes
   static UnifiedSessionActivity forClientNotes({
     required String sessionId,
     required String clientId,
@@ -225,6 +308,33 @@ class UnifiedSessionActivity {
     );
   }
 
+  /// Creates a specialized instance for job card activities
+  static UnifiedSessionActivity forJobCard({
+    required String sessionId,
+    required String clientId,
+    required String carId,
+    required String garageId,
+    required String notes,
+    required List<Map<String, dynamic>> jobCardItems,
+    List<String> images = const [],
+    List<String> videos = const [],
+    String? createdBy,
+  }) {
+    return UnifiedSessionActivity(
+      id: '', // Will be set by Firestore
+      sessionId: sessionId,
+      clientId: clientId,
+      carId: carId,
+      garageId: garageId,
+      stage: ActivityStage.jobCard,
+      notes: notes,
+      images: images,
+      videos: videos,
+      requests: jobCardItems,
+      createdBy: createdBy,
+    );
+  }
+
   // Copy with method for updates
   UnifiedSessionActivity copyWith({
     String? notes,
@@ -259,8 +369,22 @@ class UnifiedSessionActivity {
       status: status ?? this.status,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is UnifiedSessionActivity &&
+        other.id == id &&
+        other.sessionId == sessionId &&
+        other.stage == stage;
+  }
+
+  @override
+  int get hashCode => Object.hash(id, sessionId, stage);
+
+  @override
+  String toString() {
+    return 'UnifiedSessionActivity(id: $id, sessionId: $sessionId, stage: ${stage.displayName}, notes: ${notes.length} chars)';
+  }
 }
-
-enum ActivityStage { clientNotes, inspection, testDrive, report }
-
-enum ActivityStatus { draft, completed, reviewed }

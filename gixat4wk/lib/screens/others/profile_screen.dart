@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../controllers/auth_controller.dart';
 import '../../services/database_service.dart';
+import '../../widgets/account_deletion_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -153,6 +154,47 @@ class ProfileScreen extends StatelessWidget {
             _buildSettingsCard(theme, 'Log Out', Icons.logout, () {
               authController.signOut();
             }, isDestructive: true),
+
+            const SizedBox(height: 24),
+
+            // Data & Privacy Section
+            Text(
+              'Data & Privacy',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildSettingsCard(
+              theme,
+              'Export My Data',
+              Icons.download_outlined,
+              () {
+                Get.snackbar(
+                  'Export Data',
+                  'Data export feature coming soon',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildSettingsCard(
+              theme,
+              'Delete My Account',
+              Icons.delete_forever_outlined,
+              () {
+                final currentUser = authController.currentUser;
+                if (currentUser != null) {
+                  Get.dialog(
+                    AccountDeletionDialog(
+                      userId: currentUser.uid,
+                      userEmail: currentUser.email,
+                    ),
+                  );
+                }
+              },
+              isDestructive: true,
+            ),
 
             // Footer spacer
             const SizedBox(height: 40),

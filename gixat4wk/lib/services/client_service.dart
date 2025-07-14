@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../models/client.dart';
 import 'error_service.dart';
+import 'customer_deletion_service.dart';
 
 class ClientService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -15,10 +16,43 @@ class ClientService {
   CollectionReference get _clientsCollection =>
       _firestore.collection('clients');
 
-  // Get all clients for a garage
-  Stream<List<Client>> getClientsForGarage(String garageId) {
+  // Get all clients for a garage (active only by default)
+  Stream<List<Client>> getClientsForGarage(
+    String garageId, {
+    bool includeDeleted = false,
+  }) {
+    Query query = _clientsCollection.where('garageId', isEqualTo: garageId);
+
+    if (!includeDeleted) {
+      query = query.where('isDeleted', isEqualTo: false);
+    }
+
+    return query.snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => Client.fromFirestore(doc)).toList();
+    });
+  }
+
+  // Get all active clients for a garage
+  Stream<List<Client>> getActiveClientsForGarage(String garageId) {
     return _clientsCollection
         .where('garageId', isEqualTo: garageId)
+        .where('isDeleted', isEqualTo: false)
+        .where('status', isEqualTo: 'active')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => Client.fromFirestore(doc)).toList();
+        });
+  }
+
+  // Get clients by status
+  Stream<List<Client>> getClientsByStatus(
+    String garageId,
+    CustomerStatus status,
+  ) {
+    String statusString = status.toString().split('.').last;
+    return _clientsCollection
+        .where('garageId', isEqualTo: garageId)
+        .where('status', isEqualTo: statusString)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs.map((doc) => Client.fromFirestore(doc)).toList();
@@ -75,7 +109,30 @@ class ClientService {
     }
   }
 
-  // Delete a client
+  // Soft delete a client (recommended)
+  Future<bool> softDeleteClient(
+    String clientId,
+    String deletedBy, {
+    String? reason,
+  }) async {
+    try {
+      return await CustomerDeletionService.softDeleteCustomer(
+        customerId: clientId,
+        deletedBy: deletedBy,
+        reason: reason,
+        status: CustomerStatus.deleted,
+      );
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ClientService.softDeleteClient',
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  // Hard delete a client (use with caution)
   Future<bool> deleteClient(String clientId) async {
     try {
       await _clientsCollection.doc(clientId).delete();
@@ -84,6 +141,58 @@ class ClientService {
       _errorService.logError(
         e,
         context: 'ClientService.deleteClient',
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  // Restore a deleted client
+  Future<bool> restoreClient(
+    String clientId,
+    String restoredBy, {
+    String? reason,
+  }) async {
+    try {
+      return await CustomerDeletionService.restoreCustomer(
+        customerId: clientId,
+        restoredBy: restoredBy,
+        reason: reason,
+      );
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ClientService.restoreClient',
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
+  // Update client status
+  Future<bool> updateClientStatus(
+    String clientId,
+    CustomerStatus status,
+    String updatedBy, {
+    String? reason,
+  }) async {
+    try {
+      if (status == CustomerStatus.deleted) {
+        return await softDeleteClient(clientId, updatedBy, reason: reason);
+      } else if (status == CustomerStatus.active) {
+        return await restoreClient(clientId, updatedBy, reason: reason);
+      } else {
+        return await CustomerDeletionService.softDeleteCustomer(
+          customerId: clientId,
+          deletedBy: updatedBy,
+          reason: reason,
+          status: status,
+        );
+      }
+    } catch (e, stackTrace) {
+      _errorService.logError(
+        e,
+        context: 'ClientService.updateClientStatus',
         stackTrace: stackTrace,
       );
       return false;

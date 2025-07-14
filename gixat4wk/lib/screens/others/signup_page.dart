@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
-import 'signup_page.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _SignUpPageState extends State<SignUpPage> {
   final AuthController authController = Get.find<AuthController>();
+  final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  String? _nameError;
   String? _emailError;
   String? _passwordError;
+  String? _confirmPasswordError;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +63,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             const SizedBox(height: 24),
                             Text(
-                              "Welcome Back",
+                              "Create Account",
                               style: theme.textTheme.headlineLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF1D1D1F),
@@ -67,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              "Sign in to continue",
+                              "Sign up to get started",
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: const Color(0xFF86868B),
                                 fontWeight: FontWeight.w400,
@@ -77,11 +82,73 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
 
-                      // Modern, premium login form
+                      // Modern, premium signup form
                       Form(
                         key: _formKey,
                         child: Column(
                           children: [
+                            // Name field
+                            TextFormField(
+                              controller: nameController,
+                              autofillHints: const [AutofillHints.name],
+                              keyboardType: TextInputType.name,
+                              textCapitalization: TextCapitalization.words,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF1D1D1F),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Full Name",
+                                prefixIcon: const Icon(
+                                  Icons.person_outline,
+                                  color: Color(0xFF86868B),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE5E5EA),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE5E5EA),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: theme.colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                  horizontal: 16,
+                                ),
+                                errorText: _nameError,
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter your full name';
+                                }
+                                if (value.trim().length < 2) {
+                                  return 'Name must be at least 2 characters';
+                                }
+                                return null;
+                              },
+                              onChanged: (_) {
+                                setState(() => _nameError = null);
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
                             // Email field
                             TextFormField(
                               controller: emailController,
@@ -148,7 +215,7 @@ class _LoginPageState extends State<LoginPage> {
                             // Password field
                             TextFormField(
                               controller: passwordController,
-                              autofillHints: const [AutofillHints.password],
+                              autofillHints: const [AutofillHints.newPassword],
                               obscureText: _obscurePassword,
                               style: const TextStyle(
                                 fontSize: 17,
@@ -207,7 +274,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
+                                  return 'Please enter a password';
                                 }
                                 if (value.length < 6) {
                                   return 'Password must be at least 6 characters';
@@ -218,18 +285,94 @@ class _LoginPageState extends State<LoginPage> {
                                 setState(() => _passwordError = null);
                               },
                             ),
+
+                            const SizedBox(height: 16),
+
+                            // Confirm Password field
+                            TextFormField(
+                              controller: confirmPasswordController,
+                              autofillHints: const [AutofillHints.newPassword],
+                              obscureText: _obscureConfirmPassword,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFF1D1D1F),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Confirm Password",
+                                prefixIcon: const Icon(
+                                  Icons.lock_outline,
+                                  color: Color(0xFF86868B),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE5E5EA),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFE5E5EA),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: theme.colorScheme.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                  horizontal: 16,
+                                ),
+                                errorText: _confirmPasswordError,
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureConfirmPassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: const Color(0xFF86868B),
+                                    size: 22,
+                                  ),
+                                  onPressed:
+                                      () => setState(
+                                        () =>
+                                            _obscureConfirmPassword =
+                                                !_obscureConfirmPassword,
+                                      ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please confirm your password';
+                                }
+                                if (value != passwordController.text) {
+                                  return 'Passwords do not match';
+                                }
+                                return null;
+                              },
+                              onChanged: (_) {
+                                setState(() => _confirmPasswordError = null);
+                              },
+                            ),
                           ],
                         ),
                       ),
 
                       const SizedBox(height: 32),
 
-                      // Apple-style sign in button
+                      // Apple-style sign up button
                       SizedBox(
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () => _signIn(),
+                          onPressed: () => _signUp(),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: theme.colorScheme.primary,
                             foregroundColor: Colors.white,
@@ -239,7 +382,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           child: const Text(
-                            "Sign In",
+                            "Create Account",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
@@ -362,7 +505,7 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        "Don't have an account? ",
+                        "Already have an account? ",
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: const Color(0xFF86868B),
                           fontSize: 16,
@@ -371,7 +514,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Get.to(() => const SignUpPage());
+                          Get.back(); // Navigate back to login
                         },
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
@@ -379,7 +522,7 @@ class _LoginPageState extends State<LoginPage> {
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(
-                          "Sign Up",
+                          "Sign In",
                           style: TextStyle(
                             color: theme.colorScheme.primary,
                             fontSize: 16,
@@ -398,19 +541,26 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _signIn() async {
+  void _signUp() async {
     if (_formKey.currentState?.validate() != true) {
       return;
     }
 
     try {
-      await authController.signIn(
+      await authController.signUp(
         emailController.text.trim(),
         passwordController.text,
       );
+
+      // After successful signup, update the display name
+      if (authController.firebaseUser != null) {
+        await authController.firebaseUser!.updateDisplayName(
+          nameController.text.trim(),
+        );
+      }
     } catch (e) {
       Get.snackbar(
-        "Sign In Failed",
+        "Sign Up Failed",
         e.toString(),
         backgroundColor: Colors.red.withValues(alpha: 0.1),
         colorText: Colors.red,
@@ -425,8 +575,10 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
   }
 }

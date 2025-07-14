@@ -294,6 +294,9 @@ class UnifiedSessionService {
       case ActivityStage.report:
         newStatus = 'REPORTED';
         break;
+      case ActivityStage.jobCard:
+        newStatus = 'JOB_CREATED';
+        break;
     }
 
     try {
@@ -316,6 +319,7 @@ class UnifiedSessionService {
         'inspection': false,
         'testDrive': false,
         'report': false,
+        'jobCard': false,
       };
 
       for (final activity in activities) {
@@ -332,6 +336,9 @@ class UnifiedSessionService {
           case ActivityStage.report:
             progress['report'] = true;
             break;
+          case ActivityStage.jobCard:
+            progress['jobCard'] = true;
+            break;
         }
       }
 
@@ -343,6 +350,7 @@ class UnifiedSessionService {
         'inspection': false,
         'testDrive': false,
         'report': false,
+        'jobCard': false,
       };
     }
   }
@@ -361,6 +369,8 @@ class UnifiedSessionService {
         return 'Test Drive';
       case ActivityStage.report:
         return 'Report';
+      case ActivityStage.jobCard:
+        return 'Job Card';
     }
   }
 
