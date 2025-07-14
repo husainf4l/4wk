@@ -53,7 +53,7 @@ class EnhancedAuthController extends GetxController {
       try {
         // First try to get from cache
         final cachedUser = await _cacheService.get<Map<String, dynamic>>(
-          '${_userProfileCacheKey}${firebaseUser.uid}',
+          '$_userProfileCacheKey${firebaseUser.uid}',
           category: 'user',
         );
 
@@ -96,7 +96,7 @@ class EnhancedAuthController extends GetxController {
 
       // Cache the user data
       await _cacheService.set(
-        '${_userProfileCacheKey}${firebaseUser.uid}',
+        '$_userProfileCacheKey${firebaseUser.uid}',
         userData,
         duration: const Duration(hours: 6), // Refresh every 6 hours
         category: 'user',
@@ -114,7 +114,7 @@ class EnhancedAuthController extends GetxController {
 
       // Cache the new user data
       await _cacheService.set(
-        '${_userProfileCacheKey}${firebaseUser.uid}',
+        '$_userProfileCacheKey${firebaseUser.uid}',
         newUserDoc.data() as Map<String, dynamic>,
         duration: const Duration(hours: 6),
         category: 'user',
@@ -202,7 +202,7 @@ class EnhancedAuthController extends GetxController {
       final userData = _appUser.value?.toMap();
       if (userData != null) {
         await _cacheService.set(
-          '${_userProfileCacheKey}${user.uid}',
+          '$_userProfileCacheKey${user.uid}',
           userData,
           duration: const Duration(hours: 6),
           category: 'user',
@@ -269,7 +269,7 @@ class EnhancedAuthController extends GetxController {
       // Clear specific user caches
       if (firebaseUser != null) {
         await _cacheService.remove(
-          '${_userProfileCacheKey}${firebaseUser!.uid}',
+          '$_userProfileCacheKey${firebaseUser!.uid}',
           category: 'user',
         );
       }

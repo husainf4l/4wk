@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import 'package:gixat4wk/screens/main_navigation_screen.dart';
+import 'package:gixat4wk/screens/others/main_navigation_screen.dart';
 import 'unified_session_activity_screen.dart';
 import 'report_screen.dart';
 import '../../models/session.dart';
@@ -110,7 +110,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 20,
                       offset: const Offset(0, 5),
                     ),
@@ -131,7 +131,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                           decoration: BoxDecoration(
                             color: SessionUtils.getStatusColor(
                               widget.session.status,
-                            ).withOpacity(0.1),
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -332,7 +332,7 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                             title: 'Job Order',
                             color: accentColor,
                             // Job Order requires reportId to be present
-                            hasData: widget.session.reportId != null,
+                            // hasData: widget.session.reportId != null,
                             onTap: () {},
                           ),
                         ),
@@ -542,7 +542,7 @@ class _SessionBox extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 15,
               offset: const Offset(0, 4),
             ),
@@ -576,7 +576,7 @@ class _SessionBox extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.2),
+                    color: Colors.green.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.check, color: Colors.green, size: 12),
@@ -662,7 +662,7 @@ class _UnifiedActivityItem extends StatelessWidget {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -674,7 +674,7 @@ class _UnifiedActivityItem extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: color.withOpacity(0.1),
+                  backgroundColor: color.withValues(alpha: 0.1),
                   child: Icon(stageIcon, size: 20, color: color),
                 ),
                 const SizedBox(width: 12),

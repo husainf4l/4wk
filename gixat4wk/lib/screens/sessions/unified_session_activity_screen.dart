@@ -46,12 +46,11 @@ class _UnifiedSessionActivityScreenState
   bool _isSaving = false;
   bool _isAddingImage = false; // Prevent rapid image additions
   double _uploadProgress = 0.0;
-  String _uploadStatus = '';
 
   // Track individual image upload progress
-  Map<String, double> _imageUploadProgress =
+  final Map<String, double> _imageUploadProgress =
       {}; // File path -> progress (0.0 to 1.0)
-  Map<String, bool> _imageUploadCompleted = {}; // File path -> completed status
+  final Map<String, bool> _imageUploadCompleted = {}; // File path -> completed status
 
   // Form controllers
   final TextEditingController _notesController = TextEditingController();
@@ -60,9 +59,9 @@ class _UnifiedSessionActivityScreenState
   // Common data
   List<String> _images = []; // Uploaded image URLs
   List<String> _videos = []; // Uploaded video URLs
-  List<File> _pendingImages = []; // Local images waiting to be uploaded
-  List<File> _pendingVideos = []; // Local videos waiting to be uploaded
-  List<String> _videosToDelete = []; // Track videos to delete from S3
+  final List<File> _pendingImages = []; // Local images waiting to be uploaded
+  final List<File> _pendingVideos = []; // Local videos waiting to be uploaded
+  final List<String> _videosToDelete = []; // Track videos to delete from S3
   List<Map<String, dynamic>> _requests = [];
 
   // Stage-specific data
@@ -204,15 +203,12 @@ class _UnifiedSessionActivityScreenState
     setState(() {
       _isSaving = true;
       _uploadProgress = 0.0;
-      _uploadStatus = 'Preparing to save...';
     });
 
     try {
       // Step 1: Upload any remaining pending images (if any)
       if (_pendingImages.isNotEmpty) {
         setState(() {
-          _uploadStatus =
-              'Uploading remaining ${_pendingImages.length} images...';
           _uploadProgress = 0.1;
         });
 
@@ -258,7 +254,6 @@ class _UnifiedSessionActivityScreenState
 
           setState(() {
             _uploadProgress = 0.4;
-            _uploadStatus = 'All images ready!';
           });
 
           // Clear progress tracking
@@ -271,7 +266,6 @@ class _UnifiedSessionActivityScreenState
         } catch (e) {
           debugPrint('Failed to upload remaining images: $e');
           setState(() {
-            _uploadStatus = 'Some images failed to upload';
           });
         }
 
@@ -282,7 +276,6 @@ class _UnifiedSessionActivityScreenState
       // Step 2: Upload pending videos (if any)
       if (_pendingVideos.isNotEmpty) {
         setState(() {
-          _uploadStatus = 'Uploading ${_pendingVideos.length} videos...';
           _uploadProgress = 0.5;
         });
 
@@ -306,13 +299,11 @@ class _UnifiedSessionActivityScreenState
             );
             setState(() {
               _uploadProgress = 0.7;
-              _uploadStatus = '${uploadedVideoUrls.length} videos uploaded!';
             });
           }
         } catch (e) {
           debugPrint('Failed to upload video batch: $e');
           setState(() {
-            _uploadStatus = 'Some videos failed to upload';
           });
         }
 
@@ -323,7 +314,6 @@ class _UnifiedSessionActivityScreenState
       // Step 3: Delete removed videos from S3
       if (_videosToDelete.isNotEmpty) {
         setState(() {
-          _uploadStatus = 'Cleaning up removed videos...';
           _uploadProgress = 0.8;
         });
 
@@ -341,7 +331,6 @@ class _UnifiedSessionActivityScreenState
 
       // Step 4: Save activity data
       setState(() {
-        _uploadStatus = 'Saving activity data...';
         _uploadProgress = 0.9;
       });
 
@@ -372,7 +361,6 @@ class _UnifiedSessionActivityScreenState
 
       setState(() {
         _uploadProgress = 1.0;
-        _uploadStatus = success ? 'Saved successfully!' : 'Save failed!';
       });
 
       if (success) {
@@ -404,7 +392,6 @@ class _UnifiedSessionActivityScreenState
     } catch (e) {
       debugPrint('💥 Error during save: $e');
       setState(() {
-        _uploadStatus = 'Error occurred!';
       });
       Get.snackbar('Error', 'An error occurred: $e');
     } finally {
@@ -412,7 +399,6 @@ class _UnifiedSessionActivityScreenState
       setState(() {
         _isSaving = false;
         _uploadProgress = 0.0;
-        _uploadStatus = '';
       });
     }
   }
@@ -1474,7 +1460,7 @@ class _UnifiedSessionActivityScreenState
         Get.snackbar(
           'Upload Failed',
           'Failed to upload image. Will retry on save.',
-          backgroundColor: Colors.orange.withOpacity(0.8),
+          backgroundColor: Colors.orange.withValues(alpha: 0.8),
           duration: const Duration(seconds: 3),
         );
       }
@@ -1489,7 +1475,7 @@ class _UnifiedSessionActivityScreenState
       Get.snackbar(
         'Processing Error',
         'Image added but will be processed on save.',
-        backgroundColor: Colors.orange.withOpacity(0.8),
+        backgroundColor: Colors.orange.withValues(alpha: 0.8),
         duration: const Duration(seconds: 2),
       );
     }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:gixat4wk/screens/sessions/old/create_session_screen.dart';
+import 'package:gixat4wk/screens/sessions/create_session_screen.dart';
 import 'package:gixat4wk/screens/sessions/session_details_screen.dart';
 import '../../controllers/auth_controller.dart';
 import '../../services/database_service.dart';
@@ -67,7 +67,7 @@ class SessionsScreen extends StatelessWidget {
                         controlAffinity: ListTileControlAffinity.leading,
                         contentPadding: EdgeInsets.zero,
                       );
-                    }).toList(),
+                    }),
                     const SizedBox(height: 20),
                     Row(
                       children: [
@@ -203,7 +203,7 @@ class SessionsScreen extends StatelessWidget {
                                         backgroundColor:
                                             SessionUtils.getStatusColor(
                                               status,
-                                            ).withOpacity(0.1),
+                                            ).withValues(alpha: 0.1),
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             20,
@@ -211,7 +211,7 @@ class SessionsScreen extends StatelessWidget {
                                           side: BorderSide(
                                             color: SessionUtils.getStatusColor(
                                               status,
-                                            ).withOpacity(0.2),
+                                            ).withValues(alpha: 0.2),
                                           ),
                                         ),
                                       ),
@@ -380,7 +380,7 @@ class _SessionCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6.0),
       elevation: 1.5,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () => Get.to(() => SessionDetailsScreen(session: session)),
@@ -408,7 +408,7 @@ class _SessionCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(

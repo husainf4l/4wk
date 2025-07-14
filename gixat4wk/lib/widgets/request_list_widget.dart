@@ -18,7 +18,6 @@ class RequestListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
 
     if (requests.isEmpty) {
       return const Center(
@@ -88,7 +87,7 @@ class RequestListWidget extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: argancyColor.withOpacity(0.1),
+                    color: argancyColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

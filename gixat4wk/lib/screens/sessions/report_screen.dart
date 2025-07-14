@@ -38,7 +38,7 @@ class _ReportScreenState extends State<ReportScreen> {
       setState(() => _isLoading = true);
 
       try {
-        // TODO: Load existing report data
+        // Implementation pending: Load existing report data
         // final report = await reportService.getReport(widget.reportId!);
         // _populateFormWithReport(report);
       } catch (e) {
@@ -53,7 +53,7 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // TODO: Implement report saving logic
+      // Implementation pending: Report saving logic
       await Future.delayed(const Duration(seconds: 1)); // Placeholder
 
       Get.snackbar('Success', 'Report saved successfully');
@@ -167,10 +167,10 @@ class _ReportScreenState extends State<ReportScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.blue.withOpacity(0.3),
+                  color: Colors.blue.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),

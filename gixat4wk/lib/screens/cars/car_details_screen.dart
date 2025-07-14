@@ -8,7 +8,7 @@ import '../../services/car_service.dart';
 import '../../services/session/session_service.dart';
 import '../../utils/session_utils.dart';
 import '../sessions/session_details_screen.dart';
-import '../sessions/old/create_session_screen.dart';
+import '../sessions/create_session_screen.dart';
 import 'edit_car_screen.dart'; // Import for EditCarScreen
 
 class CarDetailsScreen extends StatefulWidget {
@@ -354,11 +354,7 @@ class _CarDetailsScreenState extends State<CarDetailsScreen> {
                   child: const Icon(Icons.build, color: Colors.blue),
                 ),
                 title: Text('Service on $formattedDate'),
-                subtitle: Text(
-                  session.clientNoteId != null
-                      ? 'Client notes available'
-                      : 'No notes',
-                ),
+                subtitle: Text("ss"),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,

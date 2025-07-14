@@ -77,28 +77,6 @@ class CacheService extends GetxService {
     });
   }
 
-  /// Initialize all cache layers (original method - now split)
-  Future<void> _initializeCache() async {
-    try {
-      // Initialize Hive
-      await Hive.initFlutter();
-
-      // Open Hive boxes
-      _userBox = await Hive.openBox('user_cache');
-      _dataBox = await Hive.openBox('data_cache');
-      _configBox = await Hive.openBox('config_cache');
-
-      // Initialize SharedPreferences
-      _prefs = await SharedPreferences.getInstance();
-
-      // Clean expired cache entries on startup
-      await _cleanExpiredCache();
-
-      debugPrint('CacheService initialized successfully');
-    } catch (e) {
-      debugPrint('Error initializing CacheService: $e');
-    }
-  }
 
   /// Setup connectivity listener
   void _setupConnectivityListener() {

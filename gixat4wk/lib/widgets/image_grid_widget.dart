@@ -186,7 +186,7 @@ class ImageGridWidget extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -197,7 +197,7 @@ class ImageGridWidget extends StatelessWidget {
                         child: CircularProgressIndicator(
                           value: progress,
                           strokeWidth: 3,
-                          backgroundColor: Colors.white.withOpacity(0.3),
+                          backgroundColor: Colors.white.withValues(alpha: 0.3),
                           color: Colors.white,
                         ),
                       ),
@@ -225,7 +225,7 @@ class ImageGridWidget extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    color: Colors.green.withOpacity(0.8),
+                    color: Colors.green.withValues(alpha: 0.8),
                   ),
                   child: const Column(
                     mainAxisAlignment: MainAxisAlignment.center,

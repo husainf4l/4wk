@@ -4,9 +4,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:gixat4wk/firebase_options.dart';
 import 'controllers/auth_controller.dart';
-import 'screens/login_page.dart';
-import 'screens/main_navigation_screen.dart'; // Import the new navigation screen
-import 'screens/garage_setup_screen.dart'; // Import the new garage setup screen
+import 'screens/others/login_page.dart';
+import 'screens/others/main_navigation_screen.dart'; // Import the new navigation screen
+import 'screens/others/garage_setup_screen.dart'; // Import the new garage setup screen
 import 'theme/app_theme.dart';
 import 'services/database_service.dart';
 import 'services/error_service.dart'; // Import the new error service

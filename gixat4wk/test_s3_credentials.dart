@@ -1,12 +1,11 @@
 import 'dart:io';
 import 'lib/services/aws_s3_service.dart';
-import 'lib/config/aws_config.dart';
 
 void main() async {
-  print('Testing S3 credentials...');
-  print('Access Key: ${AWSConfig.accessKeyId}');
-  print('Region: ${AWSConfig.region}');
-  print('Bucket: ${AWSConfig.bucketName}');
+  // print('Testing S3 credentials...');
+  // print('Access Key: ${AWSConfig.accessKeyId}');
+  // print('Region: ${AWSConfig.region}');
+  // print('Bucket: ${AWSConfig.bucketName}');
 
   final s3Service = AwsS3Service();
 
@@ -17,7 +16,7 @@ void main() async {
   );
 
   try {
-    print('Uploading test file...');
+    // print('Uploading test file...');
     final uploadUrl = await s3Service.uploadFile(
       file: testFile,
       objectKey: 'test/credentials_test.txt',
@@ -25,21 +24,21 @@ void main() async {
     );
 
     if (uploadUrl != null) {
-      print('✅ Upload successful! URL: $uploadUrl');
+      // print('✅ Upload successful! URL: $uploadUrl');
 
       // Test deletion
-      print('Testing deletion...');
+      // print('Testing deletion...');
       final deleted = await s3Service.deleteFile('test/credentials_test.txt');
       if (deleted) {
-        print('✅ Deletion successful!');
+        // print('✅ Deletion successful!');
       } else {
-        print('❌ Deletion failed');
+        // print('❌ Deletion failed');
       }
     } else {
-      print('❌ Upload failed');
+      // print('❌ Upload failed');
     }
   } catch (e) {
-    print('❌ Error: $e');
+    // print('❌ Error: $e');
   } finally {
     // Clean up test file
     if (await testFile.exists()) {
