@@ -89,6 +89,10 @@ class DatabaseService extends GetxService {
     Map<String, dynamic> data,
   ) async {
     _checkInitialized();
+    if (documentId.isEmpty) {
+      _logError('Error: documentId cannot be empty.', 'Empty documentId');
+      return;
+    }
     try {
       return await _firestore.collection(collection).doc(documentId).set(data);
     } catch (e) {
@@ -104,6 +108,10 @@ class DatabaseService extends GetxService {
     Map<String, dynamic> data,
   ) async {
     _checkInitialized();
+    if (documentId.isEmpty) {
+      _logError('Error: documentId cannot be empty.', 'Empty documentId');
+      return;
+    }
     try {
       return await _firestore
           .collection(collection)
@@ -118,6 +126,10 @@ class DatabaseService extends GetxService {
   // Delete a document
   Future<void> deleteDocument(String collection, String documentId) async {
     _checkInitialized();
+    if (documentId.isEmpty) {
+      _logError('Error: documentId cannot be empty.', 'Empty documentId');
+      return;
+    }
     try {
       return await _firestore.collection(collection).doc(documentId).delete();
     } catch (e) {
@@ -132,6 +144,10 @@ class DatabaseService extends GetxService {
     String documentId,
   ) async {
     _checkInitialized();
+    if (documentId.isEmpty) {
+      _logError('Error: documentId cannot be empty.', 'Empty documentId');
+      throw ArgumentError('Document ID cannot be empty.');
+    }
     try {
       return await _firestore.collection(collection).doc(documentId).get();
     } catch (e) {
@@ -174,6 +190,10 @@ class DatabaseService extends GetxService {
   // Get user data by UID
   Stream<DocumentSnapshot> getUserByUid(String uid) {
     _checkInitialized();
+    if (uid.isEmpty) {
+      _logError('Error: uid cannot be empty.', 'Empty uid');
+      return Stream.error(ArgumentError('User ID cannot be empty.'));
+    }
     try {
       return usersCollection.doc(uid).snapshots();
     } catch (e) {
@@ -185,6 +205,10 @@ class DatabaseService extends GetxService {
   // Create or update user data
   Future<void> saveUserData(String uid, Map<String, dynamic> userData) async {
     _checkInitialized();
+    if (uid.isEmpty) {
+      _logError('Error: uid cannot be empty.', 'Empty uid');
+      return;
+    }
     try {
       return await usersCollection
           .doc(uid)

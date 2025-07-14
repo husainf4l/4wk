@@ -45,8 +45,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>whatsapp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs camera access to take photos for client notes</string>
+	<string>This app needs access to the camera to take photos for session activities.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs photos access to upload images for client notes</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -61,12 +67,6 @@
 				<string>com.googleusercontent.apps.274884115180-vq8dp4svu0sftfppic2ktc6okm4bqdpm</string>
 			</array>
 		</dict>
-	</array>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>https</string>
-		<string>http</string>
-		<string>appleid</string>
 	</array>
 	<key>GIDClientID</key>
 	<string>274884115180-vq8dp4svu0sftfppic2ktc6okm4bqdpm.apps.googleusercontent.com</string>

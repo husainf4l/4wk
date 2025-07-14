@@ -11,6 +11,7 @@ import 'theme/app_theme.dart';
 import 'services/database_service.dart';
 import 'services/error_service.dart'; // Import the new error service
 import 'services/cache_service.dart'; // Import the new cache service
+import 'services/session/session_service.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -76,6 +77,7 @@ Future<void> _initializeServices() async {
     databaseService.setErrorService(errorService);
 
     Get.put(AuthController());
+    Get.put(SessionService());
 
     // Preload critical data in background
     _preloadCriticalData(cacheService);

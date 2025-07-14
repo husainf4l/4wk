@@ -338,7 +338,16 @@ class _SessionDetailsScreenState extends State<SessionDetailsScreen> {
                         ),
                         // Adding an empty container for the second column to maintain layout consistency
                         const SizedBox(width: 16),
-                        Expanded(child: Container()),
+                        Expanded(
+                          child: _SessionBox(
+                            icon: Icons.high_quality,
+                            title: 'QC',
+                            color: accentColor,
+                            onTap: () {
+                              // TODO: Implement QC navigation
+                            },
+                          ),
+                        ),
                       ],
                     ),
 
